@@ -1,0 +1,19 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+
+# Env
+.env
+.env.local
+
+# Backend (Maven / Java)
+backend/target/
+
+# Frontend (Node / Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
