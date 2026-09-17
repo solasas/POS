@@ -19,7 +19,7 @@ This starts four services:
 |------------|-------------------------------|-----------------------------------------|
 | frontend   | http://localhost:3000        | Nginx serving the built React app, proxies `/api` and `/ws` to backend |
 | backend    | http://localhost:8080        | Spring Boot API                        |
-| postgres   | localhost:5432                | Database `pos` / user `pos` / pass `pos` (override via `.env`) |
+| postgres   | localhost:5433                | Database `pos` / user `pos` / pass `pos` (override via `.env`); mapped to 5433 on the host to avoid clashing with a locally installed Postgres |
 | redis      | localhost:6379                | Available for caching/session use      |
 
 Stop everything with `Ctrl+C`, then `docker compose down` (add `-v` to also wipe the Postgres volume).
@@ -42,6 +42,8 @@ By default it connects to Postgres at `localhost:5432` (see `src/main/resources/
 ```bash
 docker compose up postgres redis
 ```
+
+The dockerized Postgres is published on host port `5433` (to avoid clashing with a locally installed Postgres on the default `5432`), so point the backend at it with `DB_PORT=5433 ./mvnw spring-boot:run`.
 
 ### Frontend
 
