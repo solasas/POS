@@ -1,0 +1,8 @@
+package com.pos.catalog.exception;
+
+public class CatalogConflictException extends RuntimeException {
+
+    public CatalogConflictException(String message) {
+        super(message);
+    }
+}
