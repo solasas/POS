@@ -15,6 +15,7 @@ import com.pos.auth.entity.User;
 import com.pos.auth.repository.UserRepository;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -24,6 +25,9 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    /** Request attribute read by the entry point so a 401 can say why the token was refused. */
+    public static final String AUTH_ERROR_ATTRIBUTE = "pos.auth.error";
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
@@ -41,8 +45,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 userRepository.findById(userId)
                         .filter(User::isActive)
                         .ifPresent(user -> authenticate(request, user, jwtService.registerIdFrom(claims).orElse(null)));
+            } catch (ExpiredJwtException ex) {
+                SecurityContextHolder.clearContext();
+                request.setAttribute(AUTH_ERROR_ATTRIBUTE, "Your session has expired. Please sign in again.");
             } catch (JwtException | IllegalArgumentException ex) {
                 SecurityContextHolder.clearContext();
+                request.setAttribute(AUTH_ERROR_ATTRIBUTE, "Invalid authentication token");
             }
         }
 

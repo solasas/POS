@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.pos.auth.dto.AuthResponse;
+import com.pos.auth.dto.CurrentUserResponse;
 import com.pos.auth.dto.LoginRequest;
 import com.pos.auth.dto.PinLoginRequest;
 import com.pos.auth.dto.SwitchUserRequest;
@@ -44,6 +45,14 @@ public class AuthService {
         recordLogin(user, null);
         String token = jwtService.generateToken(user, null);
         return new AuthResponse(token, UserSummary.from(user), null);
+    }
+
+    @Transactional(readOnly = true)
+    public CurrentUserResponse currentUser(AuthenticatedUser session) {
+        return userRepository.findById(session.id())
+                .filter(User::isActive)
+                .map(CurrentUserResponse::from)
+                .orElseThrow(() -> new InvalidCredentialsException("Account is no longer active"));
     }
 
     @Transactional

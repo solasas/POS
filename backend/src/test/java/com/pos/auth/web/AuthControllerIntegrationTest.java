@@ -3,6 +3,7 @@ package com.pos.auth.web;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -10,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -23,6 +25,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pos.auth.entity.Role;
 import com.pos.auth.repository.UserRepository;
+import com.pos.auth.security.JwtService;
 import com.pos.support.TestAccounts;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -52,6 +55,9 @@ class AuthControllerIntegrationTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Value("${pos.jwt.secret}")
+    private String jwtSecret;
 
     private TestAccounts.Account manager;
     private TestAccounts.Account admin;
@@ -155,6 +161,38 @@ class AuthControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"pin\": \"0099\"}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void meReturnsTheAuthenticatedUser() throws Exception {
+        String token = login(manager.email(), manager.password());
+
+        mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email", equalTo(manager.email())))
+                .andExpect(jsonPath("$.role", equalTo("MANAGER")));
+    }
+
+    @Test
+    void meWithoutATokenIsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/auth/me")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void aGarbageTokenIsRejectedAsInvalid() throws Exception {
+        mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer not-a-jwt"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message", equalTo("Invalid authentication token")));
+    }
+
+    @Test
+    void anExpiredTokenIsRejectedWithAnExplicitMessage() throws Exception {
+        // signed with the application's own key, but already past its expiry
+        String expired = new JwtService(jwtSecret, -1_000).generateToken(manager.user(), null);
+
+        mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + expired))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message", equalTo("Your session has expired. Please sign in again.")));
     }
 
     private static String credentials(String email, String password) {

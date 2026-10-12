@@ -8,6 +8,7 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pos.auth.security.JwtAuthenticationFilter;
 import com.pos.common.web.ApiError;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -25,7 +26,8 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
             throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(response.getWriter(),
-                ApiError.of(401, "Unauthorized", "A valid Bearer token is required"));
+        Object reason = request.getAttribute(JwtAuthenticationFilter.AUTH_ERROR_ATTRIBUTE);
+        String message = reason != null ? reason.toString() : "A valid Bearer token is required";
+        objectMapper.writeValue(response.getWriter(), ApiError.of(401, "Unauthorized", message));
     }
 }
