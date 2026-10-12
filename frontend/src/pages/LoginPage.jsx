@@ -5,14 +5,14 @@ import { apiClient } from '../api/client'
 import { useAuthStore } from '../store/authStore'
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const login = useAuthStore((state) => state.login)
   const navigate = useNavigate()
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const { data } = await apiClient.post('/auth/login', { username, password })
+      const { data } = await apiClient.post('/auth/login', { email, password })
       return data
     },
     onSuccess: (data) => {
@@ -34,11 +34,11 @@ export default function LoginPage() {
       >
         <h1 className="mb-6 text-xl font-semibold text-slate-900">Sign in</h1>
 
-        <label className="mb-1 block text-sm font-medium text-slate-700">Username</label>
+        <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
         <input
-          type="text"
-          value={username}
-          onChange={(event) => setUsername(event.target.value)}
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
           className="mb-4 w-full rounded border border-slate-300 px-3 py-2 focus:border-slate-500 focus:outline-none"
           required
         />
@@ -53,7 +53,7 @@ export default function LoginPage() {
         />
 
         {mutation.isError && (
-          <p className="mb-4 text-sm text-red-600">Invalid username or password.</p>
+          <p className="mb-4 text-sm text-red-600">Invalid email or password.</p>
         )}
 
         <button

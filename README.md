@@ -57,6 +57,35 @@ npm run dev
 
 Runs the Vite dev server at http://localhost:5173. Copy `frontend/.env.example` to `frontend/.env` to point it at a backend running somewhere other than `http://localhost:8080/api`.
 
+### Backend tests
+
+```bash
+cd backend
+./mvnw test
+```
+
+Integration tests use Testcontainers to spin up a throwaway Postgres per test class and run the real Flyway migrations against it, so Docker must be running.
+
+## Authentication
+
+JWT-based, with two login modes:
+
+- **Email + password** (`POST /api/auth/login`) — for supervisors/admins.
+- **PIN + register code** (`POST /api/auth/pin-login`) — for cashiers on a shared terminal. The PIN identifies the cashier; the register code identifies which terminal.
+- **Fast user switching** (`POST /api/auth/switch-user`, requires the caller's current Bearer token) — swaps to a different user's PIN without dropping the register session; the new token carries the same `registerId` as the one being replaced.
+
+Roles are `CASHIER` < `SUPERVISOR` < `ADMIN` (hierarchical — a SUPERVISOR token satisfies a `CASHIER`-guarded endpoint, etc.), enforced with `@PreAuthorize` on controller methods, e.g. only SUPERVISOR+ can void a completed sale or approve a discount above 15% (see `TransactionController`).
+
+Seeded dev/demo accounts (from `V14__seed_dev_data.sql`, register code `REG-1`):
+
+| Role       | Email                  | Password          | PIN  |
+|------------|------------------------|--------------------|------|
+| ADMIN      | admin@pos.local        | `Admin#12345`      | —    |
+| SUPERVISOR | supervisor@pos.local   | `Supervisor#12345` | 1111 |
+| CASHIER    | —                      | —                  | 2222 |
+
+Send the returned token as `Authorization: Bearer <token>` on subsequent requests.
+
 ## Project layout
 
 ```
@@ -80,4 +109,3 @@ POS/
 | `reporting`  | Sales and inventory reporting                      |
 | `realtime`   | WebSocket/STOMP config for live updates             |
 | `common`     | Shared config (security, etc.) and utilities       |
-# POS
