@@ -129,6 +129,18 @@ class ProductApiIntegrationTest {
     }
 
     @Test
+    void theDatabaseRejectsSkusThatDifferOnlyByCase() {
+        String sku = "DB-" + token().toUpperCase();
+        productRepository.saveAndFlush(Product.builder().sku(sku).name("A").category(category)
+                .unit(UnitOfMeasure.PIECE).price(BigDecimal.ONE).build());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                        productRepository.saveAndFlush(Product.builder().sku(sku.toLowerCase()).name("B")
+                                .category(category).unit(UnitOfMeasure.PIECE).price(BigDecimal.ONE).build()))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    }
+
+    @Test
     void duplicateBarcodeIsRejected() throws Exception {
         String barcode = "9" + token().replaceAll("[^0-9]", "0");
         createProduct(token(), barcode, "First", "1.00");

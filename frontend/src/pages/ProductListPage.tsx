@@ -205,7 +205,7 @@ export default function ProductListPage() {
               <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th scope="col" className="px-4 py-3">Product</th>
-                  <th scope="col" className="px-4 py-3">Category</th>
+                  <th scope="col" className="hidden px-4 py-3 lg:table-cell">Category</th>
                   <th scope="col" className="px-4 py-3 text-right">Price</th>
                   <th scope="col" className="px-4 py-3 text-right">Stock</th>
                   <th scope="col" className="px-4 py-3">Status</th>
@@ -220,16 +220,17 @@ export default function ProductListPage() {
                       <div className="text-xs text-slate-500">
                         {product.sku}
                         {product.barcode ? ` · ${product.barcode}` : ''}
+                        <span className="lg:hidden"> · {product.categoryName}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3">{product.categoryName}</td>
+                    <td className="hidden px-4 py-3 lg:table-cell">{product.categoryName}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{formatMoney(product.price)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">
+                    <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
                       {formatQuantity(product.stockQuantity)} {UNIT_SHORT[product.unit]}
                       {product.lowStock && (
-                        <span className="ml-2">
+                        <div className="mt-1">
                           <Badge tone="amber">Low stock</Badge>
-                        </span>
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -238,20 +239,23 @@ export default function ProductListPage() {
                       </Badge>
                     </td>
                     {canManage && (
-                      <td className="space-x-2 px-4 py-3 text-right whitespace-nowrap">
-                        <Link
-                          to={`/products/${product.id}/edit`}
-                          className="font-medium text-emerald-700 hover:underline"
-                        >
-                          Edit
-                        </Link>
-                        <Button
-                          variant="ghost"
-                          disabled={toggleStatus.isPending}
-                          onClick={() => handleToggle(product)}
-                        >
-                          {product.active ? 'Deactivate' : 'Activate'}
-                        </Button>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <div className="flex flex-col items-end gap-1 lg:flex-row lg:items-center lg:justify-end lg:gap-2">
+                          <Link
+                            to={`/products/${product.id}/edit`}
+                            className="font-medium text-emerald-700 hover:underline"
+                          >
+                            Edit
+                          </Link>
+                          <Button
+                            variant="ghost"
+                            className="!px-2 !py-1"
+                            disabled={toggleStatus.isPending}
+                            onClick={() => handleToggle(product)}
+                          >
+                            {product.active ? 'Deactivate' : 'Activate'}
+                          </Button>
+                        </div>
                       </td>
                     )}
                   </tr>

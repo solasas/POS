@@ -8,6 +8,8 @@ import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -23,9 +25,15 @@ public class JwtService {
     private final SecretKey key;
     private final long expirationMs;
 
+    private static final String DEV_SECRET_PREFIX = "change-me";
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
+
     public JwtService(
             @Value("${pos.jwt.secret}") String secret,
             @Value("${pos.jwt.expiration-ms}") long expirationMs) {
+        if (secret.startsWith(DEV_SECRET_PREFIX)) {
+            log.warn("pos.jwt.secret is the built-in development default; set JWT_SECRET before deploying");
+        }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMs = expirationMs;
     }

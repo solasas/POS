@@ -28,7 +28,7 @@ export function AppLayout() {
   return (
     <div className="min-h-screen bg-slate-50 md:flex">
       <aside
-        className={`${menuOpen ? 'block' : 'hidden'} w-full shrink-0 bg-slate-900 text-slate-100 md:block md:w-60`}
+        className={`${menuOpen ? 'block' : 'hidden'} w-full shrink-0 bg-slate-900 text-slate-100 md:block md:w-48 lg:w-60`}
       >
         <div className="px-5 py-5 text-xl font-semibold tracking-tight">Stockora</div>
         <nav aria-label="Main" className="space-y-1 px-3 pb-4">
