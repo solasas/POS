@@ -1,23 +1,29 @@
 package com.pos.catalog.dto;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 import com.pos.catalog.entity.Product;
-import com.pos.catalog.entity.UnitType;
+import com.pos.catalog.entity.UnitOfMeasure;
 
 public record ProductResponse(
         UUID id,
         String sku,
         String barcode,
         String name,
+        String description,
         UUID categoryId,
         String categoryName,
-        UnitType unitType,
+        UnitOfMeasure unit,
         BigDecimal price,
-        String taxClass,
-        boolean ageRestricted,
-        int reorderPoint) {
+        BigDecimal costPrice,
+        BigDecimal stockQuantity,
+        BigDecimal lowStockThreshold,
+        boolean lowStock,
+        boolean active,
+        Instant createdAt,
+        Instant updatedAt) {
 
     public static ProductResponse from(Product product) {
         return new ProductResponse(
@@ -25,12 +31,17 @@ public record ProductResponse(
                 product.getSku(),
                 product.getBarcode(),
                 product.getName(),
+                product.getDescription(),
                 product.getCategory().getId(),
                 product.getCategory().getName(),
-                product.getUnitType(),
+                product.getUnit(),
                 product.getPrice(),
-                product.getTaxClass(),
-                product.isAgeRestricted(),
-                product.getReorderPoint());
+                product.getCostPrice(),
+                product.getStockQuantity(),
+                product.getLowStockThreshold(),
+                product.isLowStock(),
+                product.isActive(),
+                product.getCreatedAt(),
+                product.getUpdatedAt());
     }
 }

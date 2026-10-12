@@ -49,25 +49,43 @@ public class Product {
     @Column(nullable = false)
     private String name;
 
+    @Column(length = 1000)
+    private String description;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "unit_type", nullable = false, length = 16)
-    private UnitType unitType;
+    @Column(nullable = false, length = 16)
+    private UnitOfMeasure unit;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
 
+    @Builder.Default
+    @Column(name = "cost_price", nullable = false, precision = 12, scale = 2)
+    private BigDecimal costPrice = BigDecimal.ZERO;
+
+    /** Initialized to zero and only displayed in Milestone 1; adjustments arrive with inventory. */
+    @Builder.Default
+    @Column(name = "stock_quantity", nullable = false, precision = 12, scale = 3)
+    private BigDecimal stockQuantity = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "low_stock_threshold", nullable = false, precision = 12, scale = 3)
+    private BigDecimal lowStockThreshold = BigDecimal.ZERO;
+
+    @Builder.Default
     @Column(name = "tax_class", nullable = false, length = 32)
-    private String taxClass;
+    private String taxClass = "STANDARD";
 
     @Column(name = "is_age_restricted", nullable = false)
     private boolean ageRestricted;
 
-    @Column(name = "reorder_point", nullable = false)
-    private int reorderPoint;
+    @Builder.Default
+    @Column(name = "is_active", nullable = false)
+    private boolean active = true;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -76,4 +94,8 @@ public class Product {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    public boolean isLowStock() {
+        return stockQuantity.compareTo(lowStockThreshold) <= 0;
+    }
 }
