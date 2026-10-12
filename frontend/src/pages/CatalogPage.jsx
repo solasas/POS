@@ -6,7 +6,7 @@ import { useAuthStore } from '../store/authStore'
 import CategoryManager from '../components/CategoryManager'
 import ProductForm from '../components/ProductForm'
 
-const MANAGER_ROLES = ['SUPERVISOR', 'ADMIN']
+const MANAGER_ROLES = ['MANAGER', 'ADMIN']
 
 const money = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' })
 

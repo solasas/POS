@@ -43,20 +43,20 @@ public class ProductController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('SUPERVISOR')")
+    @PreAuthorize("hasRole('MANAGER')")
     public ProductResponse create(@Valid @RequestBody ProductRequest request) {
         return catalogService.createProduct(request);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('SUPERVISOR')")
+    @PreAuthorize("hasRole('MANAGER')")
     public ProductResponse update(@PathVariable UUID id, @Valid @RequestBody ProductRequest request) {
         return catalogService.updateProduct(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasRole('SUPERVISOR')")
+    @PreAuthorize("hasRole('MANAGER')")
     public void delete(@PathVariable UUID id) {
         catalogService.deleteProduct(id);
     }

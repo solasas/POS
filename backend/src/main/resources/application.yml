@@ -27,6 +27,11 @@ pos:
   jwt:
     secret: ${JWT_SECRET:change-me-in-production-change-me-in-production}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  # Optional first-run administrator. Leave unset to create no account.
+  admin:
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
+    name: ${ADMIN_NAME:Administrator}
 
 logging:
   level:

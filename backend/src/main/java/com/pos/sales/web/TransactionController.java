@@ -27,7 +27,7 @@ public class TransactionController {
     private final TransactionService transactionService;
 
     @PostMapping("/{id}/void")
-    @PreAuthorize("hasRole('SUPERVISOR')")
+    @PreAuthorize("hasRole('MANAGER')")
     public TransactionResponse voidTransaction(
             @PathVariable UUID id,
             @AuthenticationPrincipal AuthenticatedUser actor) {
@@ -35,7 +35,7 @@ public class TransactionController {
     }
 
     @PostMapping("/{id}/discount")
-    @PreAuthorize("hasRole('CASHIER') and (#request.percentage() <= 15 or hasRole('SUPERVISOR'))")
+    @PreAuthorize("hasRole('CASHIER') and (#request.percentage() <= 15 or hasRole('MANAGER'))")
     public TransactionResponse applyDiscount(
             @PathVariable UUID id,
             @P("request") @Valid @RequestBody DiscountRequest request,

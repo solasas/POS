@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -20,13 +21,16 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pos.auth.entity.Role;
+import com.pos.auth.repository.UserRepository;
+import com.pos.support.TestAccounts;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
- * Covers the two login modes (email+password for supervisors/admins, PIN+register code for
+ * Covers the two login modes (email+password for managers/admins, PIN+register code for
  * cashiers on shared terminals) and fast user switching via {@code /api/auth/switch-user}.
- * Credentials come from the seeded dev data in V14__seed_dev_data.sql: admin@pos.local /
- * Admin#12345 (ADMIN), supervisor@pos.local / Supervisor#12345 + PIN 1111 (SUPERVISOR), and
- * PIN 2222 (CASHIER, no email), all against register REG-1.
+ * Accounts are created per test run by {@link TestAccounts}; only the REG-1 register comes
+ * from the V14 seed migration.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -43,14 +47,32 @@ class AuthControllerIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    private TestAccounts.Account manager;
+    private TestAccounts.Account admin;
+    private TestAccounts.Account cashier;
+
+    @BeforeEach
+    void createAccounts() {
+        TestAccounts accounts = new TestAccounts(userRepository, passwordEncoder);
+        manager = accounts.create(Role.MANAGER);
+        admin = accounts.create(Role.ADMIN);
+        cashier = accounts.create(Role.CASHIER);
+    }
+
     @Test
-    void emailPasswordLoginSucceedsForSupervisor() throws Exception {
+    void emailPasswordLoginSucceedsForManager() throws Exception {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\": \"supervisor@pos.local\", \"password\": \"Supervisor#12345\"}"))
+                        .content(credentials(manager.email(), manager.password())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token", notNullValue()))
-                .andExpect(jsonPath("$.user.role", equalTo("SUPERVISOR")))
+                .andExpect(jsonPath("$.user.role", equalTo("MANAGER")))
                 .andExpect(jsonPath("$.registerId", nullValue()));
     }
 
@@ -58,7 +80,7 @@ class AuthControllerIntegrationTest {
     void emailPasswordLoginRejectsWrongPassword() throws Exception {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\": \"supervisor@pos.local\", \"password\": \"wrong-password\"}"))
+                        .content(credentials(manager.email(), "wrong-password")))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -66,7 +88,7 @@ class AuthControllerIntegrationTest {
     void pinLoginSucceedsForCashierAndCarriesRegisterId() throws Exception {
         mockMvc.perform(post("/api/auth/pin-login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"pin\": \"2222\", \"registerCode\": \"REG-1\"}"))
+                        .content(pinCredentials(cashier.pin(), "REG-1")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token", notNullValue()))
                 .andExpect(jsonPath("$.user.role", equalTo("CASHIER")))
@@ -77,7 +99,7 @@ class AuthControllerIntegrationTest {
     void pinLoginRejectsWrongPin() throws Exception {
         mockMvc.perform(post("/api/auth/pin-login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"pin\": \"0099\", \"registerCode\": \"REG-1\"}"))
+                        .content(pinCredentials("0099", "REG-1")))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -85,7 +107,7 @@ class AuthControllerIntegrationTest {
     void pinLoginRejectsUnknownRegister() throws Exception {
         mockMvc.perform(post("/api/auth/pin-login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"pin\": \"2222\", \"registerCode\": \"NOPE\"}"))
+                        .content(pinCredentials(cashier.pin(), "NOPE")))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -99,40 +121,48 @@ class AuthControllerIntegrationTest {
 
     @Test
     void switchUserKeepsTheSameRegisterSessionActive() throws Exception {
-        // seeded by V14__seed_dev_data.sql
+        // register seeded by V14__seed_dev_data.sql
         String seedRegisterId = "11111111-1111-1111-1111-111111111111";
 
-        String cashierToken = pinLogin("2222", "REG-1");
+        String cashierToken = pinLogin(cashier.pin(), "REG-1");
 
         mockMvc.perform(post("/api/auth/switch-user")
                         .header("Authorization", "Bearer " + cashierToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"pin\": \"1111\"}"))
+                        .content("{\"pin\": \"%s\"}".formatted(manager.pin())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.user.role", equalTo("SUPERVISOR")))
+                .andExpect(jsonPath("$.user.role", equalTo("MANAGER")))
                 .andExpect(jsonPath("$.registerId", equalTo(seedRegisterId)));
     }
 
     @Test
     void switchUserRequiresAnActiveRegisterSession() throws Exception {
-        String adminToken = login("admin@pos.local", "Admin#12345");
+        String adminToken = login(admin.email(), admin.password());
 
         mockMvc.perform(post("/api/auth/switch-user")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"pin\": \"2222\"}"))
+                        .content("{\"pin\": \"%s\"}".formatted(cashier.pin())))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void switchUserRejectsAnUnknownPin() throws Exception {
-        String cashierToken = pinLogin("2222", "REG-1");
+        String cashierToken = pinLogin(cashier.pin(), "REG-1");
 
         mockMvc.perform(post("/api/auth/switch-user")
                         .header("Authorization", "Bearer " + cashierToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"pin\": \"0099\"}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    private static String credentials(String email, String password) {
+        return "{\"email\": \"%s\", \"password\": \"%s\"}".formatted(email, password);
+    }
+
+    private static String pinCredentials(String pin, String registerCode) {
+        return "{\"pin\": \"%s\", \"registerCode\": \"%s\"}".formatted(pin, registerCode);
     }
 
     private String login(String email, String password) throws Exception {

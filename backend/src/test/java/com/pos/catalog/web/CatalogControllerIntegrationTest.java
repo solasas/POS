@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.UUID;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -22,6 +23,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pos.auth.entity.Role;
+import com.pos.auth.repository.UserRepository;
+import com.pos.support.TestAccounts;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /** Covers catalog CRUD, role restrictions and input validation. */
 @SpringBootTest
@@ -41,6 +46,22 @@ class CatalogControllerIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    private TestAccounts.Account manager;
+    private TestAccounts.Account cashier;
+
+    @BeforeEach
+    void createAccounts() {
+        TestAccounts accounts = new TestAccounts(userRepository, passwordEncoder);
+        manager = accounts.create(Role.MANAGER);
+        cashier = accounts.create(Role.CASHIER);
+    }
 
     @Test
     void anyAuthenticatedUserCanListProducts() throws Exception {
@@ -64,8 +85,8 @@ class CatalogControllerIntegrationTest {
     }
 
     @Test
-    void supervisorCanCreateUpdateAndDeleteAProduct() throws Exception {
-        String token = supervisorToken();
+    void managerCanCreateUpdateAndDeleteAProduct() throws Exception {
+        String token = managerToken();
         String sku = uniqueSku();
 
         MvcResult created = mockMvc.perform(post("/api/catalog/products")
@@ -95,7 +116,7 @@ class CatalogControllerIntegrationTest {
 
     @Test
     void duplicateSkuIsRejectedWithConflict() throws Exception {
-        String token = supervisorToken();
+        String token = managerToken();
         String sku = uniqueSku();
         String body = productJson(sku, "First", "1.00");
 
@@ -110,7 +131,7 @@ class CatalogControllerIntegrationTest {
     @Test
     void negativePriceIsRejected() throws Exception {
         mockMvc.perform(post("/api/catalog/products")
-                        .header("Authorization", "Bearer " + supervisorToken())
+                        .header("Authorization", "Bearer " + managerToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(productJson(uniqueSku(), "Bad Price", "-1.00")))
                 .andExpect(status().isBadRequest());
@@ -119,7 +140,7 @@ class CatalogControllerIntegrationTest {
     @Test
     void blankNameIsRejected() throws Exception {
         mockMvc.perform(post("/api/catalog/products")
-                        .header("Authorization", "Bearer " + supervisorToken())
+                        .header("Authorization", "Bearer " + managerToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(productJson(uniqueSku(), " ", "1.00")))
                 .andExpect(status().isBadRequest());
@@ -129,7 +150,7 @@ class CatalogControllerIntegrationTest {
     void unknownCategoryIsRejected() throws Exception {
         String body = productJson(uniqueSku(), "Orphan", "1.00").replace(SEED_CATEGORY_ID, UUID.randomUUID().toString());
         mockMvc.perform(post("/api/catalog/products")
-                        .header("Authorization", "Bearer " + supervisorToken())
+                        .header("Authorization", "Bearer " + managerToken())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
@@ -138,13 +159,13 @@ class CatalogControllerIntegrationTest {
     @Test
     void categoryWithProductsCannotBeDeleted() throws Exception {
         mockMvc.perform(delete("/api/catalog/categories/{id}", SEED_CATEGORY_ID)
-                        .header("Authorization", "Bearer " + supervisorToken()))
+                        .header("Authorization", "Bearer " + managerToken()))
                 .andExpect(status().isConflict());
     }
 
     @Test
-    void supervisorCanCreateAndDeleteAnEmptyCategory() throws Exception {
-        String token = supervisorToken();
+    void managerCanCreateAndDeleteAnEmptyCategory() throws Exception {
+        String token = managerToken();
         MvcResult created = mockMvc.perform(post("/api/catalog/categories")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -177,10 +198,10 @@ class CatalogControllerIntegrationTest {
                 """.formatted(sku, name, SEED_CATEGORY_ID, price);
     }
 
-    private String supervisorToken() throws Exception {
+    private String managerToken() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\": \"supervisor@pos.local\", \"password\": \"Supervisor#12345\"}"))
+                        .content("{\"email\": \"%s\", \"password\": \"%s\"}".formatted(manager.email(), manager.password())))
                 .andExpect(status().isOk())
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();
@@ -189,7 +210,7 @@ class CatalogControllerIntegrationTest {
     private String cashierToken() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/pin-login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"pin\": \"2222\", \"registerCode\": \"REG-1\"}"))
+                        .content("{\"pin\": \"%s\", \"registerCode\": \"REG-1\"}".formatted(cashier.pin())))
                 .andExpect(status().isOk())
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).get("token").asText();

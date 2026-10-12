@@ -13,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -20,15 +21,18 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pos.auth.entity.Role;
+import com.pos.auth.repository.UserRepository;
 import com.pos.registers.entity.Register;
 import com.pos.registers.repository.RegisterRepository;
 import com.pos.sales.entity.Transaction;
 import com.pos.sales.entity.TransactionStatus;
 import com.pos.sales.repository.TransactionRepository;
+import com.pos.support.TestAccounts;
 
 /**
- * Covers the role-escalation rules on {@link TransactionController}: only SUPERVISOR+ may void a
- * COMPLETED sale or approve a discount above 15%, and ADMIN inherits SUPERVISOR permissions via
+ * Covers the role-escalation rules on {@link TransactionController}: only MANAGER+ may void a
+ * COMPLETED sale or approve a discount above 15%, and ADMIN inherits MANAGER permissions via
  * the configured role hierarchy.
  */
 @SpringBootTest
@@ -40,9 +44,8 @@ class TransactionAuthorizationIntegrationTest {
     @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
 
-    // seeded by V14__seed_dev_data.sql
+    // register seeded by V14__seed_dev_data.sql
     private static final UUID SEED_REGISTER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
-    private static final UUID SEED_CASHIER_ID = UUID.fromString("44444444-4444-4444-4444-444444444444");
 
     @Autowired
     private MockMvc mockMvc;
@@ -56,11 +59,26 @@ class TransactionAuthorizationIntegrationTest {
     @Autowired
     private RegisterRepository registerRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    private TestAccounts.Account cashier;
+    private TestAccounts.Account manager;
+    private TestAccounts.Account admin;
+
     private Transaction completedTransaction;
     private Transaction openTransaction;
 
     @BeforeEach
     void seedTransactions() {
+        TestAccounts accounts = new TestAccounts(userRepository, passwordEncoder);
+        cashier = accounts.create(Role.CASHIER);
+        manager = accounts.create(Role.MANAGER);
+        admin = accounts.create(Role.ADMIN);
+
         Register register = registerRepository.findById(SEED_REGISTER_ID).orElseThrow();
 
         completedTransaction = transactionRepository.save(newTransaction(register, TransactionStatus.COMPLETED));
@@ -70,7 +88,7 @@ class TransactionAuthorizationIntegrationTest {
     private Transaction newTransaction(Register register, TransactionStatus status) {
         return Transaction.builder()
                 .register(register)
-                .cashierId(SEED_CASHIER_ID)
+                .cashierId(cashier.user().getId())
                 .status(status)
                 .subtotal(new BigDecimal("100.00"))
                 .taxTotal(new BigDecimal("5.00"))
@@ -87,14 +105,14 @@ class TransactionAuthorizationIntegrationTest {
     }
 
     @Test
-    void supervisorCanVoidACompletedSale() throws Exception {
+    void managerCanVoidACompletedSale() throws Exception {
         mockMvc.perform(post("/api/transactions/{id}/void", completedTransaction.getId())
-                        .header("Authorization", "Bearer " + tokenForSupervisor()))
+                        .header("Authorization", "Bearer " + tokenForManager()))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void adminInheritsSupervisorPermissionsViaRoleHierarchy() throws Exception {
+    void adminInheritsManagerPermissionsViaRoleHierarchy() throws Exception {
         mockMvc.perform(post("/api/transactions/{id}/void", completedTransaction.getId())
                         .header("Authorization", "Bearer " + tokenForAdmin()))
                 .andExpect(status().isOk());
@@ -103,7 +121,7 @@ class TransactionAuthorizationIntegrationTest {
     @Test
     void voidingATransactionThatIsNotCompletedIsRejected() throws Exception {
         mockMvc.perform(post("/api/transactions/{id}/void", openTransaction.getId())
-                        .header("Authorization", "Bearer " + tokenForSupervisor()))
+                        .header("Authorization", "Bearer " + tokenForManager()))
                 .andExpect(status().isConflict());
     }
 
@@ -132,24 +150,24 @@ class TransactionAuthorizationIntegrationTest {
     }
 
     @Test
-    void supervisorCanApplyADiscountAboveFifteenPercent() throws Exception {
+    void managerCanApplyADiscountAboveFifteenPercent() throws Exception {
         mockMvc.perform(post("/api/transactions/{id}/discount", openTransaction.getId())
-                        .header("Authorization", "Bearer " + tokenForSupervisor())
+                        .header("Authorization", "Bearer " + tokenForManager())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"percentage\": 40}"))
                 .andExpect(status().isOk());
     }
 
     private String tokenForCashier() throws Exception {
-        return pinLogin("2222", "REG-1");
+        return pinLogin(cashier.pin(), "REG-1");
     }
 
-    private String tokenForSupervisor() throws Exception {
-        return login("supervisor@pos.local", "Supervisor#12345");
+    private String tokenForManager() throws Exception {
+        return login(manager.email(), manager.password());
     }
 
     private String tokenForAdmin() throws Exception {
-        return login("admin@pos.local", "Admin#12345");
+        return login(admin.email(), admin.password());
     }
 
     private String login(String email, String password) throws Exception {

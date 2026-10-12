@@ -37,20 +37,20 @@ public class CategoryController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('SUPERVISOR')")
+    @PreAuthorize("hasRole('MANAGER')")
     public CategoryResponse create(@Valid @RequestBody CategoryRequest request) {
         return catalogService.createCategory(request);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('SUPERVISOR')")
+    @PreAuthorize("hasRole('MANAGER')")
     public CategoryResponse update(@PathVariable UUID id, @Valid @RequestBody CategoryRequest request) {
         return catalogService.updateCategory(id, request);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasRole('SUPERVISOR')")
+    @PreAuthorize("hasRole('MANAGER')")
     public void delete(@PathVariable UUID id) {
         catalogService.deleteCategory(id);
     }

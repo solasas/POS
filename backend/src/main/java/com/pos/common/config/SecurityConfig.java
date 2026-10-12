@@ -53,12 +53,12 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /** ADMIN implies SUPERVISOR implies CASHIER, so e.g. {@code hasRole('SUPERVISOR')} also admits ADMIN. */
+    /** ADMIN implies MANAGER implies CASHIER, so e.g. {@code hasRole('MANAGER')} also admits ADMIN. */
     @Bean
     public RoleHierarchy roleHierarchy() {
         return RoleHierarchyImpl.withDefaultRolePrefix()
-                .role("ADMIN").implies("SUPERVISOR")
-                .role("SUPERVISOR").implies("CASHIER")
+                .role("ADMIN").implies("MANAGER")
+                .role("MANAGER").implies("CASHIER")
                 .build();
     }
 

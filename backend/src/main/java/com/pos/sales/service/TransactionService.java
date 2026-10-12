@@ -21,7 +21,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * Demonstrates role-guarded, state-guarded transaction operations: voiding a completed sale and
- * approving a large discount both require SUPERVISOR+ (enforced via {@code @PreAuthorize} on the
+ * approving a large discount both require MANAGER+ (enforced via {@code @PreAuthorize} on the
  * controller); this service enforces the transaction-state invariants underneath.
  */
 @Service
