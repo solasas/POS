@@ -24,6 +24,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * A payment recorded by the cashier. Holds no card numbers, UPI handles or other credentials, and
+ * is not verified by any provider.
+ */
 @Entity
 @Table(name = "payments")
 @Getter
@@ -40,24 +44,25 @@ public class Payment {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "transaction_id", nullable = false)
-    private Transaction transaction;
+    @JoinColumn(name = "sale_id", nullable = false, updatable = false)
+    private Sale sale;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 16)
+    @Column(nullable = false, length = 16, updatable = false)
     private PaymentMethod method;
 
-    @Column(nullable = false, precision = 12, scale = 2)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16, updatable = false)
+    private PaymentStatus status;
+
+    @Column(nullable = false, precision = 12, scale = 2, updatable = false)
     private BigDecimal amount;
 
-    @Column(precision = 12, scale = 2)
+    @Column(precision = 12, scale = 2, updatable = false)
     private BigDecimal tendered;
 
-    @Column(name = "change_due", precision = 12, scale = 2)
+    @Column(name = "change_due", precision = 12, scale = 2, updatable = false)
     private BigDecimal changeDue;
-
-    @Column(name = "gateway_ref", length = 128)
-    private String gatewayRef;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

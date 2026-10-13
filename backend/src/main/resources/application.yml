@@ -29,6 +29,26 @@ pos:
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+  # Tax and discount rules. Rates are percentages. Prices are tax-EXCLUSIVE unless
+  # prices-include-tax is true. Unknown tax classes fall back to default-rate-percent (0 = no tax).
+  pricing:
+    tax:
+      default-rate-percent: ${TAX_DEFAULT_RATE_PERCENT:0}
+      prices-include-tax: ${TAX_PRICES_INCLUDE_TAX:false}
+      rates-percent:
+        STANDARD: ${TAX_STANDARD_RATE_PERCENT:0}
+        ZERO: 0
+    discount:
+      cashier-max-percent: ${DISCOUNT_CASHIER_MAX_PERCENT:15}
+      manager-max-percent: ${DISCOUNT_MANAGER_MAX_PERCENT:50}
+      admin-max-percent: ${DISCOUNT_ADMIN_MAX_PERCENT:100}
+  # Printed on receipts.
+  store:
+    name: ${STORE_NAME:Stockora Supermarket}
+    address: ${STORE_ADDRESS:}
+    phone: ${STORE_PHONE:}
+    tax-id: ${STORE_TAX_ID:}
+    footer: ${STORE_RECEIPT_FOOTER:Thank you for shopping with us!}
   # Optional first-run administrator. Leave unset to create no account.
   admin:
     email: ${ADMIN_EMAIL:}

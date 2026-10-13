@@ -3,9 +3,12 @@ package com.pos.common.web;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.ErrorResponse;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -20,11 +23,13 @@ import com.pos.auth.exception.RegisterNotActiveException;
 import com.pos.catalog.exception.CatalogConflictException;
 import com.pos.catalog.exception.CatalogEntryNotFoundException;
 import com.pos.catalog.exception.CatalogValidationException;
-import com.pos.sales.exception.InvalidTransactionStateException;
-import com.pos.sales.exception.TransactionNotFoundException;
+import com.pos.inventory.exception.InventoryException;
+import com.pos.sales.exception.SaleException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler({InvalidCredentialsException.class, RegisterNotActiveException.class})
     public ResponseEntity<ApiError> handleUnauthorized(RuntimeException ex) {
@@ -36,14 +41,23 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
-    @ExceptionHandler({TransactionNotFoundException.class, CatalogEntryNotFoundException.class})
-    public ResponseEntity<ApiError> handleNotFound(RuntimeException ex) {
+    @ExceptionHandler(CatalogEntryNotFoundException.class)
+    public ResponseEntity<ApiError> handleNotFound(CatalogEntryNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler(InvalidTransactionStateException.class)
-    public ResponseEntity<ApiError> handleConflict(InvalidTransactionStateException ex) {
-        return build(HttpStatus.CONFLICT, ex.getMessage());
+    @ExceptionHandler(SaleException.class)
+    public ResponseEntity<ApiError> handleSale(SaleException ex) {
+        Map<String, String> fieldErrors = ex.getField() == null ? null : Map.of(ex.getField(), ex.getMessage());
+        return ResponseEntity.status(ex.getStatus()).body(ApiError.of(
+                ex.getStatus().value(), ex.getStatus().getReasonPhrase(), ex.getMessage(), ex.getCode(), fieldErrors));
+    }
+
+    @ExceptionHandler(InventoryException.class)
+    public ResponseEntity<ApiError> handleInventory(InventoryException ex) {
+        Map<String, String> fieldErrors = ex.getField() == null ? null : Map.of(ex.getField(), ex.getMessage());
+        return ResponseEntity.status(ex.getStatus()).body(ApiError.of(
+                ex.getStatus().value(), ex.getStatus().getReasonPhrase(), ex.getMessage(), ex.getCode(), fieldErrors));
     }
 
     @ExceptionHandler(CatalogConflictException.class)
@@ -90,6 +104,21 @@ public class GlobalExceptionHandler {
         HttpStatus status = HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status)
                 .body(ApiError.of(status.value(), status.getReasonPhrase(), message, fieldErrors));
+    }
+
+    /**
+     * Last resort: log the cause server-side and return a generic body, so stack traces and
+     * database details never reach the client. Framework exceptions that already carry an HTTP
+     * status (405, 404, 415, ...) keep it.
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleUnexpected(Exception ex) {
+        if (ex instanceof ErrorResponse errorResponse) {
+            HttpStatus status = HttpStatus.valueOf(errorResponse.getStatusCode().value());
+            return build(status, status.getReasonPhrase());
+        }
+        log.error("Unhandled exception", ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again.");
     }
 
     private ResponseEntity<ApiError> buildFieldError(HttpStatus status, String message, String field) {
