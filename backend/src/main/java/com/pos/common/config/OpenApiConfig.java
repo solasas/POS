@@ -20,7 +20,7 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("Stockora API")
                         .description("Supermarket POS and inventory management API")
-                        .version("0.1.0"))
+                        .version("1.0.2"))
                 .components(new Components().addSecuritySchemes(BEARER, new SecurityScheme()
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
