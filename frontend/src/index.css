@@ -3,3 +3,70 @@
 body {
   margin: 0;
 }
+
+/* ---- receipts ---------------------------------------------------------------------------- */
+.receipt {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #000;
+  background: #fff;
+}
+.receipt-58 {
+  width: 58mm;
+}
+.receipt-80 {
+  width: 80mm;
+  font-size: 13px;
+}
+.receipt p {
+  margin: 0;
+}
+.receipt-center {
+  text-align: center;
+}
+.receipt-title {
+  margin: 0 0 2px;
+  font-size: 1.25em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.receipt-rule {
+  margin: 6px 0;
+  border: 0;
+  border-top: 1px dashed #000;
+}
+.receipt-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.receipt-items li {
+  margin-bottom: 4px;
+}
+.receipt-item-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    margin: 0;
+  }
+  /* hide everything that is not the receipt: navigation, buttons, dialogs, toasts */
+  .no-print {
+    display: none !important;
+  }
+  .receipt-page {
+    background: #fff !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+  }
+  .receipt-sheet {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+}

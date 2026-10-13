@@ -38,7 +38,15 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
+        <Link
+          to="/pos"
+          className="rounded-md bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800"
+        >
+          Open point of sale
+        </Link>
+      </div>
 
       {error && <Alert>Could not load dashboard data: {errorMessage(error)}</Alert>}
 

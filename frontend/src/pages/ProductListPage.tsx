@@ -10,6 +10,7 @@ import { categoryService } from '../services/categoryService'
 import { errorMessage } from '../services/errors'
 import { productService } from '../services/productService'
 import { useAuthStore } from '../store/authStore'
+import { StockAdjustDialog } from '../components/products/StockAdjustDialog'
 import type { Product, ProductQuery, ProductSortKey } from '../types/api'
 import { formatMoney, formatQuantity, hasRole, UNIT_SHORT } from '../utils/format'
 
@@ -40,6 +41,7 @@ export default function ProductListPage() {
   const direction = params.get('dir') === 'desc' ? 'desc' : 'asc'
   const page = Math.max(Number(params.get('page') ?? '1') - 1, 0) || 0
 
+  const [adjusting, setAdjusting] = useState<Product | null>(null)
   const [searchText, setSearchText] = useState(search)
   const debouncedSearch = useDebouncedValue(searchText, 300)
 
@@ -247,6 +249,9 @@ export default function ProductListPage() {
                           >
                             Edit
                           </Link>
+                          <Button variant="ghost" className="!px-2 !py-1" onClick={() => setAdjusting(product)}>
+                            Stock
+                          </Button>
                           <Button
                             variant="ghost"
                             className="!px-2 !py-1"
@@ -271,6 +276,19 @@ export default function ProductListPage() {
             onPageChange={(next) => update({ page: String(next + 1) }, false)}
           />
         </>
+      )}
+      {adjusting && (
+        <StockAdjustDialog
+          product={adjusting}
+          onClose={() => setAdjusting(null)}
+          onAdjusted={(stock) => {
+            toast.success(`${adjusting.name}: stock is now ${stock}.`)
+            setAdjusting(null)
+            queryClient.invalidateQueries({ queryKey: ['products'] })
+            queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+            queryClient.invalidateQueries({ queryKey: ['pos'] })
+          }}
+        />
       )}
     </div>
   )

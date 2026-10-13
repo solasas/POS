@@ -14,6 +14,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Dashboard', end: true, minRole: 'CASHIER' },
+  { to: '/pos', label: 'Point of sale', minRole: 'CASHIER' },
+  { to: '/sales', label: 'Sales', minRole: 'CASHIER' },
   { to: '/products', label: 'Products', minRole: 'CASHIER' },
   { to: '/categories', label: 'Categories', minRole: 'CASHIER' },
 ]

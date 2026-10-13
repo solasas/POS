@@ -5,12 +5,20 @@ import type { ApiErrorBody } from '../types/api'
 export class ApiError extends Error {
   readonly status: number | null
   readonly fieldErrors: Record<string, string>
+  /** Stable machine-readable reason from the API, e.g. INSUFFICIENT_STOCK. */
+  readonly code?: string
 
-  constructor(message: string, status: number | null, fieldErrors: Record<string, string> = {}) {
+  constructor(
+    message: string,
+    status: number | null,
+    fieldErrors: Record<string, string> = {},
+    code?: string,
+  ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.fieldErrors = fieldErrors
+    this.code = code
   }
 }
 
@@ -25,6 +33,7 @@ export function toApiError(error: unknown): ApiError {
       body?.message || `Request failed (${error.response.status})`,
       error.response.status,
       body?.fieldErrors ?? {},
+      body?.code,
     )
   }
   return new ApiError(error instanceof Error ? error.message : 'Something went wrong.', null)
