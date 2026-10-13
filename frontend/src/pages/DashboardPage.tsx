@@ -1,25 +1,65 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Alert, Badge, Spinner } from '../components/ui/feedback'
+import { RecentSales } from '../components/dashboard/RecentSales'
+import { RestockList } from '../components/dashboard/RestockList'
+import { TodayCard } from '../components/dashboard/TodayCard'
+import { Alert } from '../components/ui/feedback'
+import { Icon } from '../components/ui/Icon'
 import { categoryService } from '../services/categoryService'
 import { errorMessage } from '../services/errors'
 import { productService } from '../services/productService'
-import { formatQuantity, UNIT_SHORT } from '../utils/format'
+import { salesService } from '../services/salesService'
+import { useAuthStore } from '../store/authStore'
+import { hasRole } from '../utils/format'
 
-function Metric({ label, value, to }: { label: string; value: number | undefined; to: string }) {
+function greeting(hour: number): string {
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
+function localDayRange(): { from: string; to: string } {
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 1)
+  return { from: start.toISOString(), to: end.toISOString() }
+}
+
+function Stat({ label, value, to, tone = 'default' }: { label: string; value: number | undefined; to: string; tone?: 'default' | 'warn' }) {
   return (
     <Link
       to={to}
-      className="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:ring-emerald-600"
+      className="group flex items-center justify-between rounded-xl px-3 py-3 transition hover:bg-slate-100/70"
     >
-      <div className="text-sm text-slate-500">{label}</div>
-      <div className="mt-1 text-3xl font-semibold text-slate-900">{value ?? '—'}</div>
+      <span className="text-sm text-slate-600">{label}</span>
+      <span className="flex items-center gap-2">
+        <span
+          className={`num font-display text-2xl font-bold ${tone === 'warn' && (value ?? 0) > 0 ? 'text-amber-600' : 'text-ink'}`}
+        >
+          {value ?? '—'}
+        </span>
+        <Icon name="arrowRight" size={16} className="text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-emerald-700" />
+      </span>
     </Link>
   )
 }
 
 export default function DashboardPage() {
-  // every figure below comes from the API; "size: 1" requests only need totalElements
+  const user = useAuthStore((state) => state.user)
+  const seesEveryone = hasRole(user?.role, 'MANAGER')
+  const firstName = user?.name?.split(' ')[0] ?? ''
+
+  const today = useQuery({
+    queryKey: ['dashboard', 'today', new Date().toDateString()],
+    queryFn: () => salesService.summary(localDayRange()),
+    refetchInterval: 60_000,
+  })
+  const recent = useQuery({
+    queryKey: ['dashboard', 'recent-sales', seesEveryone],
+    queryFn: () => salesService.list({ size: 5 }, !seesEveryone),
+    refetchInterval: 60_000,
+  })
   const totalProducts = useQuery({
     queryKey: ['dashboard', 'products-total'],
     queryFn: () => productService.list({ size: 1 }),
@@ -33,54 +73,51 @@ export default function DashboardPage() {
     queryFn: () => productService.list({ active: true, lowStock: true, sortBy: 'stock', size: 5 }),
   })
 
-  const error = totalProducts.error ?? activeCategories.error ?? lowStock.error
-  const loading = totalProducts.isPending || activeCategories.isPending || lowStock.isPending
+  const error = today.error ?? recent.error ?? totalProducts.error ?? activeCategories.error ?? lowStock.error
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-        <Link
-          to="/pos"
-          className="rounded-md bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800"
-        >
-          Open point of sale
-        </Link>
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow mb-1.5">Dashboard</p>
+          <h1 className="font-display text-[1.9rem] leading-tight font-bold text-ink sm:text-[2.25rem]">
+            {greeting(new Date().getHours())}
+            {firstName ? `, ${firstName}` : ''}
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {seesEveryone ? "Here's how the store is doing today." : "Here's how your till is doing today."}
+          </p>
+        </div>
+      </header>
+
+      {error && <Alert>Could not load some dashboard data: {errorMessage(error)}</Alert>}
+
+      <div className="grid gap-6 lg:grid-cols-12">
+        <div className="space-y-6 lg:col-span-7">
+          <TodayCard summary={today.data} loading={today.isPending} />
+          <RecentSales sales={recent.data?.content ?? []} loading={recent.isPending} />
+        </div>
+
+        <div className="space-y-6 lg:col-span-5">
+          <section aria-label="Store overview" className="card p-3">
+            <p className="eyebrow px-3 pt-3 pb-1">Store overview</p>
+            <Stat label="Total products" value={totalProducts.data?.totalElements} to="/products" />
+            <Stat label="Active categories" value={activeCategories.data?.totalElements} to="/categories" />
+            <Stat
+              label="Low-stock products"
+              value={lowStock.data?.totalElements}
+              to="/products?low=1&status=active"
+              tone="warn"
+            />
+          </section>
+
+          <RestockList
+            products={lowStock.data?.content ?? []}
+            totalLow={lowStock.data?.totalElements ?? 0}
+            loading={lowStock.isPending}
+          />
+        </div>
       </div>
-
-      {error && <Alert>Could not load dashboard data: {errorMessage(error)}</Alert>}
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Metric label="Total products" value={totalProducts.data?.totalElements} to="/products" />
-        <Metric label="Active categories" value={activeCategories.data?.totalElements} to="/categories" />
-        <Metric
-          label="Low-stock products"
-          value={lowStock.data?.totalElements}
-          to="/products?low=1&status=active"
-        />
-      </div>
-
-      <section className="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Needs restocking</h2>
-        {loading && <Spinner />}
-        {lowStock.data && lowStock.data.content.length === 0 && (
-          <p className="text-sm text-slate-500">No active products are at or below their low-stock threshold.</p>
-        )}
-        {lowStock.data && lowStock.data.content.length > 0 && (
-          <ul className="divide-y divide-slate-100">
-            {lowStock.data.content.map((product) => (
-              <li key={product.id} className="flex items-center justify-between py-2 text-sm">
-                <span className="text-slate-800">
-                  {product.name} <span className="text-slate-400">· {product.sku}</span>
-                </span>
-                <Badge tone="amber">
-                  {formatQuantity(product.stockQuantity)} {UNIT_SHORT[product.unit]} left
-                </Badge>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </div>
   )
 }

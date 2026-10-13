@@ -3,7 +3,9 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { CategoryForm } from '../components/categories/CategoryForm'
 import { useToast } from '../hooks/useToast'
 import { Button } from '../components/ui/Button'
-import { Alert, Badge, EmptyState, Spinner } from '../components/ui/feedback'
+import { Alert, Badge, EmptyState, TableSkeleton } from '../components/ui/feedback'
+import { Icon } from '../components/ui/Icon'
+import { PageHeader } from '../components/ui/PageHeader'
 import { Pagination } from '../components/ui/Pagination'
 import { categoryService } from '../services/categoryService'
 import { errorMessage } from '../services/errors'
@@ -60,18 +62,29 @@ export default function CategoriesPage() {
     onError: (error) => toast.error(errorMessage(error)),
   })
 
+  const field =
+    'h-10 rounded-[10px] border border-slate-300 bg-card px-3 text-sm text-ink transition hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 focus:outline-none'
+
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">Categories</h1>
-        {canManage && editing === undefined && (
-          <Button onClick={() => setEditing(null)}>Add category</Button>
-        )}
-      </div>
+    <div>
+      <PageHeader
+        eyebrow="Catalog"
+        title="Categories"
+        description="Group products so they are easy to find and report on."
+        actions={
+          canManage &&
+          editing === undefined && (
+            <Button onClick={() => setEditing(null)}>
+              <Icon name="plus" size={17} strokeWidth={2.25} />
+              Add category
+            </Button>
+          )
+        }
+      />
 
       {editing !== undefined && (
-        <div className="rounded-lg bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">
+        <div className="card animate-rise mb-5 p-6">
+          <h2 className="mb-4 font-display text-lg font-bold text-ink">
             {editing ? 'Edit category' : 'New category'}
           </h2>
           <CategoryForm
@@ -83,18 +96,21 @@ export default function CategoriesPage() {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-3 rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-200">
-        <input
-          type="search"
-          aria-label="Search categories"
-          placeholder="Search categories…"
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value)
-            setPage(0)
-          }}
-          className="min-w-56 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-2 focus:outline-emerald-600"
-        />
+      <div className="card mb-5 flex flex-wrap gap-3 p-3.5">
+        <div className="relative min-w-56 flex-1">
+          <Icon name="search" size={18} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400" />
+          <input
+            type="search"
+            aria-label="Search categories"
+            placeholder="Search categories…"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value)
+              setPage(0)
+            }}
+            className={`${field} w-full pl-10`}
+          />
+        </div>
         <select
           aria-label="Filter by status"
           value={status}
@@ -102,7 +118,7 @@ export default function CategoriesPage() {
             setStatus(event.target.value as typeof status)
             setPage(0)
           }}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+          className={field}
         >
           <option value="all">All statuses</option>
           <option value="active">Active</option>
@@ -111,48 +127,59 @@ export default function CategoriesPage() {
       </div>
 
       {categories.isError && <Alert>Could not load categories: {errorMessage(categories.error)}</Alert>}
-      {categories.isPending && <Spinner label="Loading categories…" />}
+      {categories.isPending && <TableSkeleton rows={5} label="Loading categories…" />}
 
       {categories.data && categories.data.content.length === 0 && (
-        <EmptyState title={search || status !== 'all' ? 'No categories match your filters' : 'No categories yet'}>
+        <EmptyState
+          title={search || status !== 'all' ? 'No categories match your filters' : 'No categories yet'}
+          illustration={search || status !== 'all' ? 'search' : 'basket'}
+        >
           {canManage && !search && status === 'all' && 'Create a category to start organising products.'}
         </EmptyState>
       )}
 
       {categories.data && categories.data.content.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-lg bg-white shadow-sm ring-1 ring-slate-200">
+          <div className="card overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th scope="col" className="px-4 py-3">Name</th>
-                  <th scope="col" className="px-4 py-3">Description</th>
-                  <th scope="col" className="px-4 py-3">Status</th>
-                  {canManage && <th scope="col" className="px-4 py-3 text-right">Actions</th>}
+              <thead>
+                <tr className="border-b border-slate-200 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
+                  <th scope="col" className="px-5 py-3.5">Name</th>
+                  <th scope="col" className="hidden px-4 py-3.5 md:table-cell">Description</th>
+                  <th scope="col" className="px-4 py-3.5">Status</th>
+                  {canManage && <th scope="col" className="px-5 py-3.5 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {categories.data.content.map((category) => (
-                  <tr key={category.id} className={category.active ? '' : 'bg-slate-50 text-slate-500'}>
-                    <td className="px-4 py-3 font-medium text-slate-900">{category.name}</td>
-                    <td className="px-4 py-3">{category.description ?? '—'}</td>
-                    <td className="px-4 py-3">
+                  <tr
+                    key={category.id}
+                    className={`transition hover:bg-slate-100/50 ${category.active ? '' : 'bg-slate-100/40 text-slate-500'}`}
+                  >
+                    <td className="px-5 py-3.5 font-medium text-ink">{category.name}</td>
+                    <td className="hidden px-4 py-3.5 text-slate-600 md:table-cell">{category.description ?? '—'}</td>
+                    <td className="px-4 py-3.5">
                       <Badge tone={category.active ? 'green' : 'gray'}>
                         {category.active ? 'Active' : 'Inactive'}
                       </Badge>
                     </td>
                     {canManage && (
-                      <td className="space-x-2 px-4 py-3 text-right whitespace-nowrap">
-                        <Button variant="ghost" onClick={() => setEditing(category)}>
+                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => setEditing(category)}
+                          className="rounded-md px-2 py-1 text-[13px] font-medium text-emerald-700 hover:bg-emerald-50"
+                        >
                           Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
+                        </button>
+                        <button
+                          type="button"
                           disabled={toggle.isPending}
                           onClick={() => toggle.mutate(category)}
+                          className="rounded-md px-2 py-1 text-[13px] font-medium text-slate-500 hover:bg-slate-200/60 disabled:opacity-40"
                         >
                           {category.active ? 'Deactivate' : 'Activate'}
-                        </Button>
+                        </button>
                       </td>
                     )}
                   </tr>

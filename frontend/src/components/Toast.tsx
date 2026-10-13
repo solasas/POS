@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { ToastContext } from '../hooks/useToast'
+import { Icon } from './ui/Icon'
 import type { ToastApi } from '../hooks/useToast'
 
 type ToastTone = 'success' | 'error'
@@ -32,11 +33,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={toast.id}
             role={toast.tone === 'error' ? 'alert' : 'status'}
-            className={`rounded-md px-4 py-3 text-sm font-medium text-white shadow-lg ${
-              toast.tone === 'success' ? 'bg-emerald-700' : 'bg-red-600'
+            className={`animate-rise flex items-start gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white shadow-pop ${
+              toast.tone === 'success' ? 'bg-emerald-900' : 'bg-red-700'
             }`}
           >
-            {toast.message}
+            <span
+              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
+                toast.tone === 'success' ? 'bg-amber-400 text-ink' : 'bg-white/20 text-white'
+              }`}
+            >
+              <Icon name={toast.tone === 'success' ? 'check' : 'alert'} size={13} strokeWidth={2.5} />
+            </span>
+            <span>{toast.message}</span>
           </div>
         ))}
       </div>

@@ -1,14 +1,227 @@
 @import "tailwindcss";
+@import "@fontsource-variable/bricolage-grotesque/index.css";
+@import "@fontsource-variable/geist/index.css";
+@import "@fontsource-variable/geist-mono/index.css";
 
-body {
-  margin: 0;
+/*
+ * Stockora design tokens.
+ *
+ * Idea: a neighbourhood market, not a SaaS dashboard. Warm paper background, deep bottle-green
+ * as the single brand colour, marigold used sparingly for emphasis, chilli red only for danger.
+ * The Tailwind "slate" and "emerald" scales are remapped to warm ink and brand green so every
+ * existing utility picks the palette up consistently.
+ */
+@theme {
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Bricolage Grotesque Variable", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* warm ink neutrals (replaces slate) */
+  --color-slate-50: #faf8f3;
+  --color-slate-100: #f4f0e6;
+  --color-slate-200: #e8e2d4;
+  --color-slate-300: #d5cdba;
+  --color-slate-400: #a59d89;
+  --color-slate-500: #7a7364;
+  --color-slate-600: #5b5547;
+  --color-slate-700: #433e33;
+  --color-slate-800: #2a2720;
+  --color-slate-900: #18221c;
+  --color-slate-950: #0f1713;
+
+  /* bottle green (replaces emerald) */
+  --color-emerald-50: #eef6f0;
+  --color-emerald-100: #d8eadf;
+  --color-emerald-200: #b3d5c0;
+  --color-emerald-300: #82b99a;
+  --color-emerald-400: #4f9972;
+  --color-emerald-500: #327c59;
+  --color-emerald-600: #236548;
+  --color-emerald-700: #1b503a;
+  --color-emerald-800: #163f2e;
+  --color-emerald-900: #102f23;
+  --color-emerald-950: #0a2018;
+
+  /* marigold (replaces amber) */
+  --color-amber-50: #fff8e6;
+  --color-amber-100: #fdecbd;
+  --color-amber-200: #fadb85;
+  --color-amber-300: #f6c44a;
+  --color-amber-400: #efae1f;
+  --color-amber-500: #d9960c;
+  --color-amber-600: #b47608;
+  --color-amber-700: #8c5a0a;
+  --color-amber-800: #6f470f;
+  --color-amber-900: #5a3a11;
+
+  /* chilli (replaces red) */
+  --color-red-50: #fdf1ee;
+  --color-red-100: #fadcd5;
+  --color-red-200: #f4b9ab;
+  --color-red-300: #ea8d79;
+  --color-red-400: #de6048;
+  --color-red-500: #cc4128;
+  --color-red-600: #b2321c;
+  --color-red-700: #912818;
+  --color-red-800: #772418;
+  --color-red-900: #5f2016;
+
+  --color-paper: #f5f1e7;
+  --color-card: #fffdf8;
+  --color-ink: #18221c;
+
+  --shadow-card: 0 1px 0 rgb(24 34 28 / 0.04), 0 1px 3px rgb(24 34 28 / 0.06);
+  --shadow-pop: 0 10px 30px -8px rgb(24 34 28 / 0.25), 0 2px 6px rgb(24 34 28 / 0.08);
+
+  --animate-rise: rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-fade: fade 160ms ease-out both;
+  --animate-flash: flash 900ms ease-out both;
+  --animate-scan: scan 2.4s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+  --animate-pop: pop 420ms cubic-bezier(0.2, 1.2, 0.3, 1) both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes flash {
+  0% { background-color: var(--color-amber-100); }
+  100% { background-color: transparent; }
+}
+@keyframes scan {
+  0%, 100% { transform: translateY(0); opacity: 0.2; }
+  50% { transform: translateY(var(--scan-distance, 64px)); opacity: 1; }
+}
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+@keyframes pop {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+    font-variation-settings: "wdth" 100;
+  }
+  ::selection {
+    background: var(--color-amber-200);
+    color: var(--color-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-emerald-600);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  /* numbers line up in columns and totals */
+  table, .num, input[inputmode="decimal"] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--color-card);
+    border: 1px solid var(--color-slate-200);
+    border-radius: 14px;
+    box-shadow: var(--shadow-card);
+  }
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--color-slate-500);
+  }
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    height: 1.35rem;
+    padding: 0 0.4rem;
+    border: 1px solid var(--color-slate-300);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    background: var(--color-slate-50);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    color: var(--color-slate-600);
+  }
+  .skeleton {
+    border-radius: 8px;
+    background: linear-gradient(90deg, var(--color-slate-100) 25%, var(--color-slate-200) 50%, var(--color-slate-100) 75%);
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
+  }
+  /* till-roll ticket: torn top and bottom edges. The two zigzag masks must intersect, and
+     `round` repeat stretches the teeth to fit the width so the sides stay perfectly straight. */
+  .ticket {
+    --tooth: 12px;
+    position: relative;
+    background: var(--color-card);
+    -webkit-mask-image:
+      conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg),
+      conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg);
+    -webkit-mask-size: var(--tooth) 100%;
+    -webkit-mask-repeat: round no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-composite: source-in;
+            mask-image:
+      conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg),
+      conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg);
+            mask-size: var(--tooth) 100%;
+            mask-repeat: round no-repeat;
+            mask-position: center;
+            mask-composite: intersect;
+    filter: drop-shadow(0 1px 1px rgb(24 34 28 / 0.12)) drop-shadow(0 8px 14px rgb(24 34 28 / 0.08));
+  }
+  .barcode-motif {
+    background-image: repeating-linear-gradient(
+      90deg,
+      rgb(255 255 255 / 0.10) 0 2px,
+      transparent 2px 6px,
+      rgb(255 255 255 / 0.06) 6px 7px,
+      transparent 7px 12px,
+      rgb(255 255 255 / 0.12) 12px 15px,
+      transparent 15px 19px
+    );
+  }
+  .row-flash {
+    animation: var(--animate-flash);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
 /* ---- receipts ---------------------------------------------------------------------------- */
 .receipt {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 12px;
-  line-height: 1.35;
+  line-height: 1.4;
   color: #000;
   background: #fff;
 }
@@ -27,8 +240,10 @@ body {
 }
 .receipt-title {
   margin: 0 0 2px;
-  font-size: 1.25em;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 1.35em;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 .receipt-rule {
@@ -68,5 +283,8 @@ body {
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
+    filter: none !important;
+    -webkit-mask-image: none !important;
+            mask-image: none !important;
   }
 }

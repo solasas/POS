@@ -1,7 +1,8 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { SalesTable } from '../components/sales/SalesTable'
-import { Alert, EmptyState, Spinner } from '../components/ui/feedback'
+import { Alert, EmptyState, TableSkeleton } from '../components/ui/feedback'
+import { PageHeader } from '../components/ui/PageHeader'
 import { Pagination } from '../components/ui/Pagination'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { errorMessage } from '../services/errors'
@@ -12,7 +13,7 @@ import { hasRole } from '../utils/format'
 
 const PAGE_SIZE = 10
 const controlClass =
-  'rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-emerald-600'
+  'h-10 rounded-[10px] border border-slate-300 bg-card px-3 text-sm text-ink transition hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 focus:outline-none'
 
 /** Local calendar day boundaries as ISO instants, so "from/to" mean the cashier's own days. */
 function startOfDay(date: string): string {
@@ -64,12 +65,16 @@ export default function SalesHistoryPage() {
   const filtered = Boolean(debouncedNumber || from || to || method || status)
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-2xl font-semibold text-slate-900">{seesEveryone ? 'Sales history' : 'My sales'}</h1>
+    <div>
+      <PageHeader
+        eyebrow="Sell"
+        title={seesEveryone ? 'Sales history' : 'My sales'}
+        description={seesEveryone ? 'Every completed bill. Open one to see or reprint it.' : 'Bills you have rung up.'}
+      />
 
-      <div className="flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-200">
+      <div className="card mb-5 flex flex-wrap items-end gap-3 p-3.5">
         <label className="text-sm text-slate-700">
-          <span className="mb-1 block font-medium">Receipt number</span>
+          <span className="eyebrow mb-1.5 block">Receipt number</span>
           <input
             type="search"
             aria-label="Search by receipt number"
@@ -80,17 +85,17 @@ export default function SalesHistoryPage() {
           />
         </label>
         <label className="text-sm text-slate-700">
-          <span className="mb-1 block font-medium">From</span>
+          <span className="eyebrow mb-1.5 block">From</span>
           <input type="date" aria-label="From date" value={from} max={to || undefined}
             onChange={(event) => onFilter(setFrom)(event.target.value)} className={controlClass} />
         </label>
         <label className="text-sm text-slate-700">
-          <span className="mb-1 block font-medium">To</span>
+          <span className="eyebrow mb-1.5 block">To</span>
           <input type="date" aria-label="To date" value={to} min={from || undefined}
             onChange={(event) => onFilter(setTo)(event.target.value)} className={controlClass} />
         </label>
         <label className="text-sm text-slate-700">
-          <span className="mb-1 block font-medium">Payment</span>
+          <span className="eyebrow mb-1.5 block">Payment</span>
           <select aria-label="Payment method" value={method}
             onChange={(event) => onFilter(setMethod)(event.target.value as '' | PaymentMethod)} className={controlClass}>
             <option value="">All methods</option>
@@ -101,7 +106,7 @@ export default function SalesHistoryPage() {
         </label>
         {seesEveryone && (
           <label className="text-sm text-slate-700">
-            <span className="mb-1 block font-medium">Status</span>
+            <span className="eyebrow mb-1.5 block">Status</span>
             <select aria-label="Sale status" value={status}
               onChange={(event) => onFilter(setStatus)(event.target.value as '' | SaleStatus)} className={controlClass}>
               <option value="">All</option>
@@ -113,10 +118,10 @@ export default function SalesHistoryPage() {
       </div>
 
       {sales.isError && <Alert>Could not load sales: {errorMessage(sales.error)}</Alert>}
-      {sales.isPending && <Spinner label="Loading sales…" />}
+      {sales.isPending && <TableSkeleton rows={6} label="Loading sales…" />}
 
       {sales.data && sales.data.content.length === 0 && (
-        <EmptyState title={filtered ? 'No sales match your filters' : 'No sales yet'}>
+        <EmptyState title={filtered ? 'No sales match your filters' : 'No sales yet'} illustration="receipt">
           {!filtered && 'Completed checkouts will appear here.'}
         </EmptyState>
       )}

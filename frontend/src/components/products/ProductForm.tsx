@@ -10,6 +10,7 @@ import { UNITS } from '../../types/api'
 import type { Category, Product, ProductInput } from '../../types/api'
 import { UNIT_LABELS } from '../../utils/format'
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 
 interface ProductFormProps {
   categories: Category[]
@@ -36,6 +37,16 @@ function defaults(product?: Product): ProductFormValues {
     costPrice: product ? String(product.costPrice) : '0',
     lowStockThreshold: product ? String(product.lowStockThreshold) : '0',
   }
+}
+
+function Section({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  return (
+    <section>
+      <h2 className="font-display text-lg font-bold text-ink">{title}</h2>
+      <p className="mt-0.5 mb-4 text-sm text-slate-500">{description}</p>
+      {children}
+    </section>
+  )
 }
 
 export function ProductForm({ categories, product, onSubmit, onCancel }: ProductFormProps) {
@@ -71,71 +82,86 @@ export function ProductForm({ categories, product, onSubmit, onCancel }: Product
   const selectable = categories.filter((c) => c.active || c.id === product?.categoryId)
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-6">
+    <form onSubmit={submit} noValidate className="space-y-9">
       {formError && <Alert>{formError}</Alert>}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <TextField label="SKU" error={errors.sku?.message} {...register('sku')} />
-        <TextField
-          label="Barcode"
-          hint="Optional. Must be unique when set."
-          error={errors.barcode?.message}
-          {...register('barcode')}
-        />
-        <TextField label="Name" error={errors.name?.message} className="md:col-span-2" {...register('name')} />
-        <SelectField label="Category" error={errors.categoryId?.message} {...register('categoryId')}>
-          <option value="">Select a category…</option>
-          {selectable.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-              {category.active ? '' : ' (inactive)'}
-            </option>
-          ))}
-        </SelectField>
-        <SelectField label="Unit of measurement" error={errors.unit?.message} {...register('unit')}>
-          {UNITS.map((unit) => (
-            <option key={unit} value={unit}>
-              {UNIT_LABELS[unit]}
-            </option>
-          ))}
-        </SelectField>
-        <TextField
-          label="Selling price"
-          inputMode="decimal"
-          error={errors.price?.message}
-          {...register('price')}
-        />
-        <TextField
-          label="Cost price"
-          inputMode="decimal"
-          error={errors.costPrice?.message}
-          {...register('costPrice')}
-        />
-        <TextField
-          label="Low-stock threshold"
-          inputMode="decimal"
-          hint="Flagged as low stock when quantity is at or below this."
-          error={errors.lowStockThreshold?.message}
-          {...register('lowStockThreshold')}
-        />
-        {product && (
+      <Section title="Identity" description="How this product is named and found at the till.">
+        <div className="grid gap-4 md:grid-cols-2">
+          <TextField label="SKU" error={errors.sku?.message} className="font-mono" {...register('sku')} />
           <TextField
-            label="Current stock"
-            hint="Stock adjustments arrive in a later release."
-            value={String(product.stockQuantity)}
-            readOnly
-            disabled
+            label="Barcode"
+            hint="Optional. Must be unique when set."
+            error={errors.barcode?.message}
+            className="font-mono"
+            {...register('barcode')}
           />
-        )}
-      </div>
+          <TextField label="Name" error={errors.name?.message} className="md:col-span-2" {...register('name')} />
+          <SelectField label="Category" error={errors.categoryId?.message} {...register('categoryId')}>
+            <option value="">Select a category…</option>
+            {selectable.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+                {category.active ? '' : ' (inactive)'}
+              </option>
+            ))}
+          </SelectField>
+          <SelectField label="Unit of measurement" error={errors.unit?.message} {...register('unit')}>
+            {UNITS.map((unit) => (
+              <option key={unit} value={unit}>
+                {UNIT_LABELS[unit]}
+              </option>
+            ))}
+          </SelectField>
+        </div>
+        <div className="mt-4">
+          <TextAreaField label="Description" error={errors.description?.message} {...register('description')} />
+        </div>
+      </Section>
 
-      <TextAreaField label="Description" error={errors.description?.message} {...register('description')} />
+      <Section title="Pricing" description="Selling price is what the customer pays; cost price powers margin reports.">
+        <div className="grid gap-4 md:grid-cols-2">
+          <TextField
+            label="Selling price"
+            hint="In rupees (₹), charged per unit."
+            inputMode="decimal"
+            error={errors.price?.message}
+            {...register('price')}
+          />
+          <TextField
+            label="Cost price"
+            hint="In rupees (₹), what you pay per unit."
+            inputMode="decimal"
+            error={errors.costPrice?.message}
+            {...register('costPrice')}
+          />
+        </div>
+      </Section>
 
-      <div className="flex gap-3">
-        <Button type="submit" disabled={isSubmitting}>
+      <Section title="Stock" description="When quantity falls to the threshold, the product is flagged for restocking.">
+        <div className="grid gap-4 md:grid-cols-2">
+          <TextField
+            label="Low-stock threshold"
+            inputMode="decimal"
+            error={errors.lowStockThreshold?.message}
+            {...register('lowStockThreshold')}
+          />
+          {product && (
+            <TextField
+              label="Current stock"
+              hint="Change stock from the product list (Stock)."
+              value={String(product.stockQuantity)}
+              readOnly
+              disabled
+            />
+          )}
+        </div>
+      </Section>
+
+      <div className="flex gap-3 border-t border-slate-200 pt-6">
+        <Button type="submit" size="lg" disabled={isSubmitting}>
           {isSubmitting ? 'Saving…' : product ? 'Save changes' : 'Create product'}
         </Button>
-        <Button variant="secondary" onClick={onCancel} disabled={isSubmitting}>
+        <Button variant="secondary" size="lg" onClick={onCancel} disabled={isSubmitting}>
           Cancel
         </Button>
       </div>

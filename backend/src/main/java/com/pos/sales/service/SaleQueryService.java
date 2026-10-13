@@ -1,6 +1,10 @@
 package com.pos.sales.service;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -15,12 +19,18 @@ import com.pos.sales.config.StoreProperties;
 import com.pos.sales.dto.ReceiptResponse;
 import com.pos.sales.dto.SaleResponse;
 import com.pos.sales.dto.SaleSummaryResponse;
+import com.pos.sales.dto.SalesSummaryResponse;
 import com.pos.sales.entity.PaymentMethod;
 import com.pos.sales.entity.Sale;
 import com.pos.sales.entity.SaleStatus;
 import com.pos.sales.exception.SaleException;
 import com.pos.sales.repository.SaleRepository;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -34,6 +44,7 @@ public class SaleQueryService {
 
     private final SaleRepository saleRepository;
     private final StoreProperties storeProperties;
+    private final EntityManager entityManager;
 
     public record Filter(String saleNumber, Instant from, Instant to, UUID cashierId,
                          PaymentMethod paymentMethod, SaleStatus status) {
@@ -68,6 +79,49 @@ public class SaleQueryService {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), filter.status()));
         }
         return saleRepository.findAll(spec, pageable).map(SaleSummaryResponse::from);
+    }
+
+    /**
+     * Count and total of COMPLETED sales in [from, to), split by payment method. Cashiers only
+     * ever aggregate their own sales; managers and admins aggregate everything unless
+     * {@code onlyMine} is set.
+     */
+    @Transactional(readOnly = true)
+    public SalesSummaryResponse summary(AuthenticatedUser actor, Instant from, Instant to, boolean onlyMine) {
+        boolean restrictToSelf = onlyMine || actor.role() == Role.CASHIER;
+
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Object[]> query = cb.createQuery(Object[].class);
+        Root<Sale> root = query.from(Sale.class);
+
+        List<Predicate> where = new ArrayList<>();
+        where.add(cb.equal(root.get("status"), SaleStatus.COMPLETED));
+        if (restrictToSelf) {
+            where.add(cb.equal(root.get("cashierId"), actor.id()));
+        }
+        if (from != null) {
+            where.add(cb.greaterThanOrEqualTo(root.get("soldAt"), from));
+        }
+        if (to != null) {
+            where.add(cb.lessThan(root.get("soldAt"), to));
+        }
+        query.multiselect(root.get("paymentMethod"), cb.count(root), cb.sum(root.<BigDecimal>get("grandTotal")))
+                .where(where.toArray(Predicate[]::new))
+                .groupBy(root.get("paymentMethod"));
+
+        List<SalesSummaryResponse.MethodTotal> byMethod = new ArrayList<>();
+        long count = 0;
+        BigDecimal total = BigDecimal.ZERO;
+        for (Object[] row : entityManager.createQuery(query).getResultList()) {
+            PaymentMethod method = (PaymentMethod) row[0];
+            long rowCount = (Long) row[1];
+            BigDecimal rowTotal = row[2] == null ? BigDecimal.ZERO : (BigDecimal) row[2];
+            byMethod.add(new SalesSummaryResponse.MethodTotal(method, rowCount, rowTotal));
+            count += rowCount;
+            total = total.add(rowTotal);
+        }
+        byMethod.sort(Comparator.comparing(SalesSummaryResponse.MethodTotal::grandTotal).reversed());
+        return new SalesSummaryResponse(count, total, byMethod);
     }
 
     @Transactional(readOnly = true)

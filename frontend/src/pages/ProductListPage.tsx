@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '../components/ui/Button'
-import { Alert, Badge, EmptyState, Spinner } from '../components/ui/feedback'
+import { Alert, Badge, EmptyState, TableSkeleton } from '../components/ui/feedback'
+import { Icon } from '../components/ui/Icon'
+import { PageHeader } from '../components/ui/PageHeader'
 import { Pagination } from '../components/ui/Pagination'
 import { useToast } from '../hooks/useToast'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
@@ -23,9 +25,6 @@ const SORT_OPTIONS: { value: ProductSortKey; label: string }[] = [
   { value: 'stock', label: 'Stock' },
   { value: 'createdAt', label: 'Newest' },
 ]
-
-const selectClass =
-  'rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-2 focus:outline-emerald-600'
 
 export default function ProductListPage() {
   const [params, setParams] = useSearchParams()
@@ -97,30 +96,40 @@ export default function ProductListPage() {
   }
 
   const filtersActive = Boolean(search || categoryId || status !== 'all' || lowStock)
+  const selectClass =
+    'h-10 rounded-[10px] border border-slate-300 bg-card px-3 text-sm text-ink transition hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 focus:outline-none'
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">Products</h1>
-        {canManage && (
-          <Link
-            to="/products/new"
-            className="rounded-md bg-emerald-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-emerald-800"
-          >
-            Add product
-          </Link>
-        )}
-      </div>
+    <div>
+      <PageHeader
+        eyebrow="Catalog"
+        title="Products"
+        description="Everything you sell, with live stock and price."
+        actions={
+          canManage && (
+            <Link
+              to="/products/new"
+              className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-emerald-700 px-4 text-sm font-medium text-white shadow-[inset_0_-2px_0_rgb(0_0_0/0.18)] hover:bg-emerald-800"
+            >
+              <Icon name="plus" size={17} strokeWidth={2.25} />
+              Add product
+            </Link>
+          )
+        }
+      />
 
-      <div className="flex flex-wrap items-center gap-3 rounded-lg bg-white p-4 shadow-sm ring-1 ring-slate-200">
-        <input
-          type="search"
-          aria-label="Search products"
-          placeholder="Search name, SKU or barcode…"
-          value={searchText}
-          onChange={(event) => setSearchText(event.target.value)}
-          className={`${selectClass} min-w-56 flex-1`}
-        />
+      <div className="card mb-5 flex flex-wrap items-center gap-3 p-3.5">
+        <div className="relative min-w-60 flex-1">
+          <Icon name="search" size={18} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-slate-400" />
+          <input
+            type="search"
+            aria-label="Search products"
+            placeholder="Search name, SKU or barcode…"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            className={`${selectClass} w-full pl-10`}
+          />
+        </div>
         <select
           aria-label="Filter by category"
           value={categoryId}
@@ -144,11 +153,12 @@ export default function ProductListPage() {
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
+        <label className="flex h-10 cursor-pointer items-center gap-2 rounded-[10px] border border-slate-300 bg-card px-3 text-sm text-slate-700 transition hover:border-slate-400 has-[:checked]:border-amber-400 has-[:checked]:bg-amber-50 has-[:checked]:text-amber-900">
           <input
             type="checkbox"
             checked={lowStock}
             onChange={(event) => update({ low: event.target.checked ? '1' : null })}
+            className="h-4 w-4 accent-amber-500"
           />
           Low stock only
         </label>
@@ -176,10 +186,13 @@ export default function ProductListPage() {
       </div>
 
       {products.isError && <Alert>Could not load products: {errorMessage(products.error)}</Alert>}
-      {products.isPending && <Spinner label="Loading products…" />}
+      {products.isPending && <TableSkeleton rows={7} label="Loading products…" />}
 
       {products.data && products.data.content.length === 0 && (
-        <EmptyState title={filtersActive ? 'No products match your filters' : 'No products yet'}>
+        <EmptyState
+          title={filtersActive ? 'No products match your filters' : 'No products yet'}
+          illustration={filtersActive ? 'search' : 'basket'}
+        >
           {filtersActive ? (
             <Button
               variant="secondary"
@@ -202,64 +215,77 @@ export default function ProductListPage() {
 
       {products.data && products.data.content.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-lg bg-white shadow-sm ring-1 ring-slate-200">
+          <div className="card overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th scope="col" className="px-4 py-3">Product</th>
-                  <th scope="col" className="hidden px-4 py-3 lg:table-cell">Category</th>
-                  <th scope="col" className="px-4 py-3 text-right">Price</th>
-                  <th scope="col" className="px-4 py-3 text-right">Stock</th>
-                  <th scope="col" className="px-4 py-3">Status</th>
-                  {canManage && <th scope="col" className="px-4 py-3 text-right">Actions</th>}
+              <thead>
+                <tr className="border-b border-slate-200 text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
+                  <th scope="col" className="px-5 py-3.5">Product</th>
+                  <th scope="col" className="hidden px-4 py-3.5 lg:table-cell">Category</th>
+                  <th scope="col" className="px-4 py-3.5 text-right">Price</th>
+                  <th scope="col" className="px-4 py-3.5 text-right">Stock</th>
+                  <th scope="col" className="px-4 py-3.5">Status</th>
+                  {canManage && <th scope="col" className="px-5 py-3.5 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {products.data.content.map((product) => (
-                  <tr key={product.id} className={product.active ? '' : 'bg-slate-50 text-slate-500'}>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-slate-900">{product.name}</div>
-                      <div className="text-xs text-slate-500">
+                  <tr
+                    key={product.id}
+                    className={`transition hover:bg-slate-100/50 ${product.active ? '' : 'bg-slate-100/40 text-slate-500'}`}
+                  >
+                    <td className="px-5 py-3.5">
+                      <div className="font-medium text-ink">{product.name}</div>
+                      <div className="mt-0.5 font-mono text-xs text-slate-500">
                         {product.sku}
                         {product.barcode ? ` · ${product.barcode}` : ''}
                         <span className="lg:hidden"> · {product.categoryName}</span>
                       </div>
                     </td>
-                    <td className="hidden px-4 py-3 lg:table-cell">{product.categoryName}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{formatMoney(product.price)}</td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap tabular-nums">
-                      {formatQuantity(product.stockQuantity)} {UNIT_SHORT[product.unit]}
-                      {product.lowStock && (
+                    <td className="hidden px-4 py-3.5 text-slate-600 lg:table-cell">{product.categoryName}</td>
+                    <td className="num px-4 py-3.5 text-right font-display text-[15px] font-semibold text-ink">
+                      {formatMoney(product.price)}
+                    </td>
+                    <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                      <span className="num font-medium text-ink">
+                        {formatQuantity(product.stockQuantity)} {UNIT_SHORT[product.unit]}
+                      </span>
+                      {(product.stockQuantity <= 0 || product.lowStock) && (
                         <div className="mt-1">
-                          <Badge tone="amber">Low stock</Badge>
+                          {product.stockQuantity <= 0 ? (
+                            <Badge tone="red">Out of stock</Badge>
+                          ) : (
+                            <Badge tone="amber">Low stock</Badge>
+                          )}
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3">
-                      <Badge tone={product.active ? 'green' : 'gray'}>
-                        {product.active ? 'Active' : 'Inactive'}
-                      </Badge>
+                    <td className="px-4 py-3.5">
+                      <Badge tone={product.active ? 'green' : 'gray'}>{product.active ? 'Active' : 'Inactive'}</Badge>
                     </td>
                     {canManage && (
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <div className="flex flex-col items-end gap-1 lg:flex-row lg:items-center lg:justify-end lg:gap-2">
+                      <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                        <div className="flex flex-col items-end gap-0.5 lg:flex-row lg:items-center lg:justify-end lg:gap-1">
                           <Link
                             to={`/products/${product.id}/edit`}
-                            className="font-medium text-emerald-700 hover:underline"
+                            className="rounded-md px-2 py-1 text-[13px] font-medium text-emerald-700 hover:bg-emerald-50"
                           >
                             Edit
                           </Link>
-                          <Button variant="ghost" className="!px-2 !py-1" onClick={() => setAdjusting(product)}>
+                          <button
+                            type="button"
+                            onClick={() => setAdjusting(product)}
+                            className="rounded-md px-2 py-1 text-[13px] font-medium text-slate-600 hover:bg-slate-200/60"
+                          >
                             Stock
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            className="!px-2 !py-1"
+                          </button>
+                          <button
+                            type="button"
                             disabled={toggleStatus.isPending}
                             onClick={() => handleToggle(product)}
+                            className="rounded-md px-2 py-1 text-[13px] font-medium text-slate-500 hover:bg-slate-200/60 disabled:opacity-40"
                           >
                             {product.active ? 'Deactivate' : 'Activate'}
-                          </Button>
+                          </button>
                         </div>
                       </td>
                     )}
@@ -277,6 +303,7 @@ export default function ProductListPage() {
           />
         </>
       )}
+
       {adjusting && (
         <StockAdjustDialog
           product={adjusting}

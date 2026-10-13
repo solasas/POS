@@ -1,8 +1,10 @@
 import { useId } from 'react'
 import type { ComponentProps, ReactNode } from 'react'
 
-const controlClass =
-  'block w-full rounded-md border bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:outline-2 focus:outline-offset-0 focus:outline-emerald-600 disabled:bg-slate-50'
+export const controlClass =
+  'block w-full h-11 rounded-[10px] border bg-card px-3.5 text-[15px] text-ink shadow-[inset_0_1px_2px_rgb(24_34_28/0.05)] ' +
+  'placeholder:text-slate-400 transition hover:border-slate-400 focus:border-emerald-600 focus:outline-none ' +
+  'focus:ring-4 focus:ring-emerald-600/15 disabled:bg-slate-100 disabled:text-slate-500'
 
 interface FieldShellProps {
   label: string
@@ -15,13 +17,13 @@ interface FieldShellProps {
 function FieldShell({ label, error, hint, htmlFor, children }: FieldShellProps) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="mb-1 block text-sm font-medium text-slate-700">
+      <label htmlFor={htmlFor} className="mb-1.5 block text-[13px] font-medium text-slate-700">
         {label}
       </label>
       {children}
-      {hint && !error && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {hint && !error && <p className="mt-1.5 text-xs leading-snug text-slate-500">{hint}</p>}
       {error && (
-        <p role="alert" className="mt-1 text-xs font-medium text-red-600">
+        <p role="alert" className="mt-1.5 text-xs font-medium text-red-600">
           {error}
         </p>
       )}
@@ -35,6 +37,8 @@ interface CommonProps {
   hint?: string
 }
 
+const border = (error?: string) => (error ? 'border-red-400' : 'border-slate-300')
+
 export function TextField({ label, error, hint, className = '', ...props }: CommonProps & ComponentProps<'input'>) {
   const id = useId()
   return (
@@ -42,7 +46,7 @@ export function TextField({ label, error, hint, className = '', ...props }: Comm
       <input
         id={id}
         aria-invalid={error ? true : undefined}
-        className={`${controlClass} ${error ? 'border-red-400' : 'border-slate-300'} ${className}`}
+        className={`${controlClass} ${border(error)} ${className}`}
         {...props}
       />
     </FieldShell>
@@ -57,7 +61,7 @@ export function TextAreaField({ label, error, hint, ...props }: CommonProps & Co
         id={id}
         rows={3}
         aria-invalid={error ? true : undefined}
-        className={`${controlClass} ${error ? 'border-red-400' : 'border-slate-300'}`}
+        className={`${controlClass} h-auto py-2.5 ${border(error)}`}
         {...props}
       />
     </FieldShell>
@@ -71,7 +75,7 @@ export function SelectField({ label, error, hint, children, ...props }: CommonPr
       <select
         id={id}
         aria-invalid={error ? true : undefined}
-        className={`${controlClass} ${error ? 'border-red-400' : 'border-slate-300'}`}
+        className={`${controlClass} ${border(error)}`}
         {...props}
       >
         {children}

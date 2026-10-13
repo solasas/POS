@@ -238,3 +238,9 @@ export interface InventoryTransaction {
   actorId: string
   createdAt: string
 }
+
+export interface SalesSummary {
+  saleCount: number
+  grandTotal: number
+  byPaymentMethod: { method: PaymentMethod; saleCount: number; grandTotal: number }[]
+}

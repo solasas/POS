@@ -28,6 +28,7 @@ import com.pos.sales.dto.PricePreviewResponse;
 import com.pos.sales.dto.ReceiptResponse;
 import com.pos.sales.dto.SaleResponse;
 import com.pos.sales.dto.SaleSummaryResponse;
+import com.pos.sales.dto.SalesSummaryResponse;
 import com.pos.sales.entity.PaymentMethod;
 import com.pos.sales.entity.SaleStatus;
 import com.pos.sales.service.CheckoutService;
@@ -113,6 +114,18 @@ public class SalesController {
             @RequestParam(defaultValue = "20") int size) {
         var filter = new SaleQueryService.Filter(saleNumber, from, to, null, paymentMethod, null);
         return PageResponse.of(saleQueryService.list(actor, filter, true, pageable(page, size)), s -> s);
+    }
+
+    @GetMapping("/summary")
+    @PreAuthorize("hasRole('CASHIER')")
+    @Operation(summary = "Count and total of completed sales in [from, to), by payment method",
+            description = "Cashiers always get their own totals; MANAGER+ get everyone's unless mine=true.")
+    public SalesSummaryResponse summary(
+            @AuthenticationPrincipal AuthenticatedUser actor,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+            @RequestParam(defaultValue = "false") boolean mine) {
+        return saleQueryService.summary(actor, from, to, mine);
     }
 
     @GetMapping("/{id}")

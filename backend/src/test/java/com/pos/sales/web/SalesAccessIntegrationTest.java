@@ -212,6 +212,33 @@ class SalesAccessIntegrationTest {
     }
 
     @Test
+    void summaryTotalsCompletedSalesByPaymentMethodWithinTheCallersScope() throws Exception {
+        Instant now = Instant.now();
+        String from = now.minus(1, ChronoUnit.HOURS).toString();
+        String to = now.plus(1, ChronoUnit.HOURS).toString();
+
+        // cashier A rang up one 10.00 card sale; B one 20.00 UPI sale (two units at 10.00)
+        mockMvc.perform(get("/api/sales/summary").header("Authorization", authA)
+                        .param("from", from).param("to", to))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.saleCount", equalTo(1)))
+                .andExpect(jsonPath("$.grandTotal", equalTo(10.0)))
+                .andExpect(jsonPath("$.byPaymentMethod[0].method", equalTo("CARD")));
+
+        mockMvc.perform(get("/api/sales/summary").header("Authorization", managerAuth)
+                        .param("from", from).param("to", to))
+                .andExpect(jsonPath("$.saleCount", greaterThanOrEqualTo(2)))
+                .andExpect(jsonPath("$.byPaymentMethod[?(@.method=='UPI')]").exists());
+
+        mockMvc.perform(get("/api/sales/summary").header("Authorization", managerAuth)
+                        .param("from", now.plus(1, ChronoUnit.HOURS).toString()))
+                .andExpect(jsonPath("$.saleCount", equalTo(0)))
+                .andExpect(jsonPath("$.grandTotal", equalTo(0)));
+
+        mockMvc.perform(get("/api/sales/summary")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void unknownSalesAreNotFound() throws Exception {
         client.get(managerAuth, "/api/sales/{id}", java.util.UUID.randomUUID()).andExpect(status().isNotFound());
         client.get(managerAuth, "/api/sales/receipt/{n}", "S00000000-000000").andExpect(status().isNotFound());

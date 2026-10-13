@@ -1,5 +1,6 @@
 import { forwardRef } from 'react'
 import type { KeyboardEvent } from 'react'
+import { Icon } from '../ui/Icon'
 
 interface BarcodeInputProps {
   value: string
@@ -28,24 +29,42 @@ export const BarcodeInput = forwardRef<HTMLInputElement, BarcodeInputProps>(func
 
   return (
     <div>
-      <label htmlFor="barcode-input" className="mb-1 block text-sm font-medium text-slate-700">
+      <label htmlFor="barcode-input" className="eyebrow mb-2 block">
         Scan barcode or search products
       </label>
-      <input
-        id="barcode-input"
-        ref={ref}
-        type="text"
-        inputMode="search"
-        autoComplete="off"
-        autoCapitalize="off"
-        spellCheck={false}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Scan, or type a name / SKU / barcode and press Enter"
-        className="block w-full rounded-lg border-2 border-slate-300 bg-white px-4 py-3 text-lg shadow-sm placeholder:text-base placeholder:text-slate-400 focus:border-emerald-600 focus:outline-none"
-      />
-      <p className="mt-1 text-xs text-slate-500">Press F2 to jump back here. Enter adds an exact barcode or SKU match.</p>
+      <div className="relative">
+        <Icon
+          name="scan"
+          size={24}
+          className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-emerald-700"
+        />
+        <input
+          id="barcode-input"
+          ref={ref}
+          type="text"
+          inputMode="search"
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Scan or type to search"
+          className="block h-16 w-full rounded-2xl border-2 border-slate-300 bg-card pr-28 pl-14 text-xl font-medium text-ink shadow-[inset_0_1px_2px_rgb(24_34_28/0.06)] transition placeholder:text-base placeholder:font-normal placeholder:text-slate-400 hover:border-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/15 focus:outline-none"
+        />
+        <span className="pointer-events-none absolute top-1/2 right-4 flex -translate-y-1/2 items-center gap-1.5 text-xs text-slate-400">
+          {busy ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-700" />
+          ) : (
+            <>
+              <kbd className="kbd">Enter</kbd> add
+            </>
+          )}
+        </span>
+      </div>
+      <p className="mt-2 text-xs text-slate-500">
+        <kbd className="kbd">F2</kbd> returns here from anywhere. Enter adds an exact barcode or SKU match.
+      </p>
     </div>
   )
 })

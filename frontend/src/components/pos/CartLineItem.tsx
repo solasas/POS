@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { CartLine } from '../../hooks/useCart'
 import type { PricePreviewLine } from '../../types/api'
 import { formatMoney, UNIT_SHORT } from '../../utils/format'
-import { Button } from '../ui/Button'
+import { Icon } from '../ui/Icon'
 
 interface CartLineItemProps {
   line: CartLine
@@ -11,9 +11,11 @@ interface CartLineItemProps {
   onRemove: () => void
   /** Reason the last quantity edit was refused; shown under the line. */
   error?: string
+  /** Briefly highlights a line that was just added or incremented. */
+  flash?: boolean
 }
 
-export function CartLineItem({ line, priced, onQuantityChange, onRemove, error }: CartLineItemProps) {
+export function CartLineItem({ line, priced, onQuantityChange, onRemove, error, flash }: CartLineItemProps) {
   const { product, quantity } = line
   // text being typed; null means "show the committed quantity"
   const [draft, setDraft] = useState<string | null>(null)
@@ -27,73 +29,77 @@ export function CartLineItem({ line, priced, onQuantityChange, onRemove, error }
   }
 
   const step = 1
+  const stepper =
+    'flex h-8 w-8 items-center justify-center text-slate-600 transition hover:bg-slate-200/70 hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent'
 
   return (
-    <li className="py-3">
+    <li className={`-mx-2 rounded-lg px-2 py-3.5 ${flash ? 'row-flash' : ''}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate font-medium text-slate-900">{product.name}</div>
-          <div className="truncate text-xs text-slate-500">
-            {product.sku}
-            {product.barcode ? ` · ${product.barcode}` : ''} · {formatMoney(product.price)} / {UNIT_SHORT[product.unit]}
+          <div className="truncate font-display text-[15px] leading-snug font-semibold text-ink">{product.name}</div>
+          <div className="num mt-0.5 text-xs text-slate-500">
+            {formatMoney(product.price)} / {UNIT_SHORT[product.unit]}
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <div className="font-semibold tabular-nums text-slate-900" aria-label={`Line total for ${product.name}`}>
+          <div className="num font-display text-base font-semibold text-ink" aria-label={`Line total for ${product.name}`}>
             {priced ? formatMoney(priced.lineTotal) : '…'}
           </div>
           {priced && priced.discountAmount > 0 && (
-            <div className="text-xs text-emerald-700">−{formatMoney(priced.discountAmount)} discount</div>
+            <div className="num text-[11px] font-medium text-emerald-700">−{formatMoney(priced.discountAmount)}</div>
           )}
         </div>
       </div>
 
-      <div className="mt-2 flex items-center gap-2">
-        <Button
-          variant="secondary"
-          aria-label={`Decrease quantity of ${product.name}`}
-          onClick={() => onQuantityChange(quantity - step)}
-          disabled={quantity - step <= 0}
-          className="!px-2.5 !py-1"
-        >
-          −
-        </Button>
-        <input
-          aria-label={`Quantity of ${product.name}`}
-          inputMode="decimal"
-          value={text}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={commit}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              commit()
-            }
-          }}
-          className="w-20 rounded-md border border-slate-300 px-2 py-1 text-center text-sm tabular-nums focus:border-emerald-600 focus:outline-none"
-        />
-        <Button
-          variant="secondary"
-          aria-label={`Increase quantity of ${product.name}`}
-          onClick={() => onQuantityChange(quantity + step)}
-          className="!px-2.5 !py-1"
-        >
-          +
-        </Button>
+      <div className="mt-2.5 flex items-center gap-3">
+        <div className="inline-flex items-center overflow-hidden rounded-[9px] border border-slate-300 bg-card">
+          <button
+            type="button"
+            aria-label={`Decrease quantity of ${product.name}`}
+            onClick={() => onQuantityChange(quantity - step)}
+            disabled={quantity - step <= 0}
+            className={stepper}
+          >
+            <Icon name="minus" size={15} strokeWidth={2.25} />
+          </button>
+          <input
+            aria-label={`Quantity of ${product.name}`}
+            inputMode="decimal"
+            value={text}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={commit}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                commit()
+              }
+            }}
+            className="num h-8 w-12 border-x border-slate-200 bg-transparent text-center text-sm font-semibold text-ink focus:bg-white focus:outline-none"
+          />
+          <button
+            type="button"
+            aria-label={`Increase quantity of ${product.name}`}
+            onClick={() => onQuantityChange(quantity + step)}
+            className={stepper}
+          >
+            <Icon name="plus" size={15} strokeWidth={2.25} />
+          </button>
+        </div>
         <span className="text-xs text-slate-500">
-          {UNIT_SHORT[product.unit]} · {product.stockQuantity} in stock
+          {UNIT_SHORT[product.unit]} · <span className="num">{product.stockQuantity}</span> in stock
         </span>
-        <Button
-          variant="ghost"
+        <button
+          type="button"
           aria-label={`Remove ${product.name}`}
           onClick={onRemove}
-          className="ml-auto !px-2 !py-1 text-red-600"
+          className="ml-auto flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium text-slate-400 transition hover:bg-red-50 hover:text-red-600"
         >
+          <Icon name="trash" size={15} />
           Remove
-        </Button>
+        </button>
       </div>
       {error && (
-        <p role="alert" className="mt-1 text-xs font-medium text-red-600">
+        <p role="alert" className="mt-2 text-xs font-medium text-red-600">
           {error}
         </p>
       )}

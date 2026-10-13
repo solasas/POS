@@ -1,4 +1,4 @@
-import type { CheckoutPayload, Page, Receipt, Sale, SaleQuery, SaleSummary } from '../types/api'
+import type { CheckoutPayload, Page, Receipt, Sale, SaleQuery, SaleSummary, SalesSummary } from '../types/api'
 import { apiClient } from './apiClient'
 
 export const salesService = {
@@ -16,6 +16,12 @@ export const salesService = {
   async list(query: SaleQuery, onlyMine: boolean): Promise<Page<SaleSummary>> {
     const url = onlyMine ? '/sales/my-sales' : '/sales'
     const { data } = await apiClient.get<Page<SaleSummary>>(url, { params: query })
+    return data
+  },
+
+  /** Count and total of completed sales in [from, to), split by payment method. */
+  async summary(range: { from?: string; to?: string }): Promise<SalesSummary> {
+    const { data } = await apiClient.get<SalesSummary>('/sales/summary', { params: range })
     return data
   },
 

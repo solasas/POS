@@ -115,6 +115,7 @@ Interactive docs: `/swagger-ui.html`. List endpoints return
 | GET | `/api/pos/products/barcode/{barcode}` | CASHIER | Exact barcode/SKU lookup; returns inactive products with `active=false` |
 | POST | `/api/sales/preview` | CASHIER | Server-calculated totals for a basket; nothing is saved |
 | POST | `/api/sales/checkout` | CASHIER | Complete a sale. **Requires an `Idempotency-Key` header** |
+| GET | `/api/sales/summary` | CASHIER | Count and total of completed sales in `[from, to)` by payment method (cashiers: own sales; MANAGER+: all) |
 | GET | `/api/sales/my-sales` | CASHIER | The caller's own sales (paged, filterable) |
 | GET | `/api/sales` | MANAGER | All sales (paged; `saleNumber`, `from`, `to`, `cashierId`, `paymentMethod`, `status`) |
 | GET | `/api/sales/{id}` | CASHIER* | Sale detail |
@@ -210,6 +211,24 @@ and amounts. A trigger blocks UPDATE/DELETE on `sale_items` and `payments`, and 
 so receipts and reports never change when the catalog is edited. Products referenced by a sale
 cannot be deleted (foreign key); deactivate them instead.
 
+## Design system
+
+The UI is a deliberate design, not a component-library default. Tokens live in
+`frontend/src/index.css` (`@theme`) and everything else consumes them.
+
+- **Palette:** warm paper background, deep bottle-green brand, marigold used sparingly for emphasis
+  (primary action on the POS, change due), chilli red only for danger/out-of-stock. Tailwind's
+  `slate`/`emerald`/`amber`/`red` scales are remapped to these, so utilities stay consistent.
+- **Type:** Bricolage Grotesque for headings and money, Geist for UI, Geist Mono for SKUs and
+  receipts, all self-hosted via `@fontsource-variable` (works offline in a shop). Figures use
+  tabular numerals so columns and totals align.
+- **POS ticket:** the cart is a till-roll ticket with torn edges and an oversized total; cash
+  payment offers Exact and Indian note shortcuts (₹50, ₹100, ₹200, ₹500, ₹2000).
+- **Responsive:** the sidebar becomes a drawer below 1024 px; the ticket stays beside the scanner
+  from tablet width.
+- **Accessibility:** visible focus rings, labelled controls, `aria-live` scan feedback, keyboard
+  shortcut F2, and `prefers-reduced-motion` support.
+
 ## Pricing and tax
 
 All money is `BigDecimal` with scale 2 and **HALF_UP** rounding, done in one place
@@ -299,7 +318,7 @@ Results of the last full run (Milestone 2 sign-off):
 
 | Suite | Result |
 |---|---|
-| Backend `./mvnw test` | **116 passed**, 0 failed |
+| Backend `./mvnw test` | **117 passed**, 0 failed |
 | Frontend `npm test` | **72 passed**, 0 failed (10 files) |
 | Frontend `tsc --noEmit`, `oxlint`, `vite build` | clean |
 

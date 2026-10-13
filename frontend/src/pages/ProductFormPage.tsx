@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ProductForm } from '../components/products/ProductForm'
 import { useToast } from '../hooks/useToast'
 import { Alert, Spinner } from '../components/ui/feedback'
+import { Icon } from '../components/ui/Icon'
+import { PageHeader } from '../components/ui/PageHeader'
 import { categoryService } from '../services/categoryService'
 import { errorMessage } from '../services/errors'
 import { productService } from '../services/productService'
@@ -42,21 +44,29 @@ export default function ProductFormPage() {
   const loading = categories.isPending || (isEdit && product.isPending)
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
-      <div>
-        <Link to="/products" className="text-sm text-emerald-700 hover:underline">
-          ← Back to products
-        </Link>
-        <h1 className="mt-1 text-2xl font-semibold text-slate-900">
-          {isEdit ? 'Edit product' : 'Add product'}
-        </h1>
-      </div>
+    <div className="mx-auto max-w-3xl">
+      <Link
+        to="/products"
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-ink"
+      >
+        <Icon name="arrowLeft" size={16} />
+        Back to products
+      </Link>
+      <PageHeader
+        eyebrow="Catalog"
+        title={isEdit ? 'Edit product' : 'Add product'}
+        description={
+          isEdit
+            ? 'Changes apply to future sales; past receipts keep what was sold.'
+            : 'New products start with zero stock. Add stock from the product list.'
+        }
+      />
 
       {loadError && <Alert>Could not load the form: {errorMessage(loadError)}</Alert>}
       {loading && !loadError && <Spinner />}
 
       {!loading && !loadError && categories.data && (
-        <div className="rounded-lg bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <div className="card p-6 sm:p-8">
           {!isEdit && categories.data.content.filter((c) => c.active).length === 0 ? (
             <Alert tone="info">
               Create an active category first on the <Link to="/categories" className="underline">Categories</Link> page.
