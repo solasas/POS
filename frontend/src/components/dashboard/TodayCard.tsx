@@ -19,6 +19,8 @@ export function TodayCard({ summary, loading }: TodayCardProps) {
   const total = summary?.grandTotal ?? 0
   const bills = summary?.saleCount ?? 0
   const average = bills > 0 ? total / bills : 0
+  // cost and profit come back only for managers and admins
+  const showProfit = summary?.profit !== null && summary?.profit !== undefined
 
   return (
     <section aria-label="Today's sales" className="card overflow-hidden">
@@ -32,7 +34,7 @@ export function TodayCard({ summary, loading }: TodayCardProps) {
           </p>
         )}
 
-        <dl className="mt-6 grid grid-cols-2 gap-6 sm:max-w-sm">
+        <dl className={`mt-6 grid gap-6 ${showProfit ? 'grid-cols-3 sm:max-w-xl' : 'grid-cols-2 sm:max-w-sm'}`}>
           <div>
             <dt className="text-xs text-slate-500">Bills</dt>
             <dd className="num mt-0.5 font-display text-2xl font-semibold text-ink">{loading ? '—' : bills}</dd>
@@ -43,6 +45,20 @@ export function TodayCard({ summary, loading }: TodayCardProps) {
               {loading ? '—' : formatMoney(average)}
             </dd>
           </div>
+          {showProfit && (
+            <div>
+              <dt className="text-xs text-slate-500" title="Sales excluding tax, minus the cost price of what was sold">
+                Profit
+              </dt>
+              <dd
+                className={`num mt-0.5 font-display text-2xl font-semibold ${
+                  (summary?.profit ?? 0) < 0 ? 'text-red-600' : 'text-emerald-700'
+                }`}
+              >
+                {loading ? '—' : formatMoney(summary?.profit ?? 0)}
+              </dd>
+            </div>
+          )}
         </dl>
       </div>
 

@@ -22,6 +22,7 @@ import com.pos.sales.dto.SaleSummaryResponse;
 import com.pos.sales.dto.SalesSummaryResponse;
 import com.pos.sales.entity.PaymentMethod;
 import com.pos.sales.entity.Sale;
+import com.pos.sales.entity.SaleItem;
 import com.pos.sales.entity.SaleStatus;
 import com.pos.sales.exception.SaleException;
 import com.pos.sales.repository.SaleRepository;
@@ -29,6 +30,7 @@ import com.pos.sales.repository.SaleRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
@@ -121,14 +123,45 @@ public class SaleQueryService {
             total = total.add(rowTotal);
         }
         byMethod.sort(Comparator.comparing(SalesSummaryResponse.MethodTotal::grandTotal).reversed());
-        return new SalesSummaryResponse(count, total, byMethod);
+
+        BigDecimal cost = null;
+        BigDecimal profit = null;
+        if (actor.role() == Role.MANAGER || actor.role() == Role.ADMIN) {
+            // line-level rounding mirrors SaleResponse so the dashboard and a sale's detail agree
+            CriteriaQuery<Object[]> costQuery = cb.createQuery(Object[].class);
+            Root<SaleItem> item = costQuery.from(SaleItem.class);
+            Join<SaleItem, Sale> sale = item.join("sale");
+            List<Predicate> itemWhere = new ArrayList<>();
+            itemWhere.add(cb.equal(sale.get("status"), SaleStatus.COMPLETED));
+            if (restrictToSelf) {
+                itemWhere.add(cb.equal(sale.get("cashierId"), actor.id()));
+            }
+            if (from != null) {
+                itemWhere.add(cb.greaterThanOrEqualTo(sale.get("soldAt"), from));
+            }
+            if (to != null) {
+                itemWhere.add(cb.lessThan(sale.get("soldAt"), to));
+            }
+            costQuery.multiselect(
+                            cb.sum(cb.function("round", BigDecimal.class,
+                                    cb.prod(item.<BigDecimal>get("quantity"), item.<BigDecimal>get("unitCost")),
+                                    cb.literal(2))),
+                            cb.sum(cb.diff(item.<BigDecimal>get("lineTotal"), item.<BigDecimal>get("taxAmount"))))
+                    .where(itemWhere.toArray(Predicate[]::new));
+            Object[] row = entityManager.createQuery(costQuery).getSingleResult();
+            cost = row[0] == null ? BigDecimal.ZERO : (BigDecimal) row[0];
+            BigDecimal netRevenue = row[1] == null ? BigDecimal.ZERO : (BigDecimal) row[1];
+            profit = netRevenue.subtract(cost);
+        }
+        return new SalesSummaryResponse(count, total, byMethod, cost, profit);
     }
 
     @Transactional(readOnly = true)
     public SaleResponse get(AuthenticatedUser actor, UUID id) {
         Sale sale = saleRepository.findDetailedById(id)
                 .orElseThrow(() -> SaleException.saleNotFound(id.toString()));
-        return SaleResponse.from(authorize(actor, sale));
+        boolean privileged = actor.role() == Role.MANAGER || actor.role() == Role.ADMIN;
+        return SaleResponse.from(authorize(actor, sale), privileged);
     }
 
     @Transactional(readOnly = true)

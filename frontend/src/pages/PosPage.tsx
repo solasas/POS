@@ -270,7 +270,6 @@ export default function PosPage() {
                     key={lastTouched.id === line.product.id ? `${line.product.id}-${lastTouched.n}` : line.product.id}
                     line={line}
                     flash={lastTouched.id === line.product.id}
-                    allowBeyondStock={allowBeyondStock}
                     priced={preview.data?.lines.find((p) => p.productId === line.product.id)}
                     error={lineErrors[line.product.id]}
                     onQuantityChange={(q) => handleQuantity(line.product, q)}

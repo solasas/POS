@@ -74,6 +74,10 @@ public class SaleItem {
     @Column(name = "unit_price", nullable = false, precision = 12, scale = 2, updatable = false)
     private BigDecimal unitPrice;
 
+    /** The product's cost price when sold; used for profit and never shown to cashiers. */
+    @Column(name = "unit_cost", nullable = false, precision = 12, scale = 2, updatable = false)
+    private BigDecimal unitCost;
+
     /** quantity x unitPrice, rounded to currency precision, before discount and tax. */
     @Column(name = "line_subtotal", nullable = false, precision = 12, scale = 2, updatable = false)
     private BigDecimal lineSubtotal;

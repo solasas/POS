@@ -105,6 +105,8 @@ export function makeSale(overrides: Partial<Sale> = {}): Sale {
       changeDue: 2.16,
       recordedAt: '2026-10-13T09:30:00Z',
     },
+    costTotal: null,
+    profit: null,
     ...overrides,
   }
 }

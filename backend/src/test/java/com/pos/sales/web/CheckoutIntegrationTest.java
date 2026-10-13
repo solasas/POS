@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -373,6 +374,102 @@ class CheckoutIntegrationTest {
                 .hasMessageContaining("append-only");
         assertThatThrownBy(() -> jdbc.update("delete from sales"))
                 .hasMessageContaining("append-only");
+    }
+
+    // ---- profit --------------------------------------------------------------------------
+
+    private Product productWithCost(String price, String cost, String stock) {
+        return productWithCost(price, cost, stock, UnitOfMeasure.PIECE);
+    }
+
+    private Product productWithCost(String price, String cost, String stock, UnitOfMeasure unit) {
+        Product p = fixtures.product(price, stock, unit, true);
+        p.setCostPrice(new BigDecimal(cost));
+        return productRepository.saveAndFlush(p);
+    }
+
+    @Test
+    void profitIsNetRevenueLessTheCostSnapshottedAtSaleTime() throws Exception {
+        Product p = productWithCost("100.00", "60.00", "10");
+
+        // 2 x 100 = 200, 10% off = 20, taxable 180, 5% tax = 9 -> pays 189.
+        // Net revenue is 180 (tax is not income); cost is 2 x 60 = 120; profit 60.
+        MvcResult result = client.checkout(managerAuth, body("CARD", null, "10", p.getId(), 2))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String saleId = client.json(result).get("id").asText();
+
+        client.get(managerAuth, "/api/sales/{id}", saleId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.grandTotal", equalTo(189.0)))
+                .andExpect(jsonPath("$.costTotal", equalTo(120.0)))
+                .andExpect(jsonPath("$.profit", equalTo(60.0)));
+
+        Product edited = fixtures.reload(p);
+        edited.setCostPrice(new BigDecimal("999.00"));
+        productRepository.saveAndFlush(edited);
+
+        client.get(managerAuth, "/api/sales/{id}", saleId)
+                .andExpect(jsonPath("$.costTotal", equalTo(120.0)))
+                .andExpect(jsonPath("$.profit", equalTo(60.0)));
+    }
+
+    @Test
+    void summaryProfitMatchesTheSumOfTheSalesInThePeriod() throws Exception {
+        Instant from = Instant.now();
+        Product a = productWithCost("100.00", "60.00", "10");
+        Product b = productWithCost("20.00", "5.50", "10", UnitOfMeasure.KG);
+
+        // a: 2 x 100 = 200 (+10 tax), cost 120 -> profit 80
+        client.checkout(cashierAuth, body("CARD", null, null, a.getId(), 2)).andExpect(status().isCreated());
+        // b: 1.5 kg x 20 = 30 (+1.50 tax), cost 1.5 x 5.50 = 8.25 -> profit 21.75
+        client.checkout(cashierAuth, body("UPI", null, null, b.getId(), "1.5")).andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/sales/summary").header("Authorization", managerAuth)
+                        .param("from", from.toString())
+                        .param("to", Instant.now().plusSeconds(3600).toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.saleCount", equalTo(2)))
+                .andExpect(jsonPath("$.grandTotal", equalTo(241.5)))      // 210 + 31.50
+                .andExpect(jsonPath("$.costTotal", equalTo(128.25)))      // 120 + 8.25
+                .andExpect(jsonPath("$.profit", equalTo(101.75)));        // 80 + 21.75
+    }
+
+    @Test
+    void cashiersNeverSeeCostOrProfit() throws Exception {
+        Product p = productWithCost("100.00", "60.00", "10");
+
+        MvcResult result = client.checkout(cashierAuth, body("CARD", null, null, p.getId(), 1))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.costTotal", nullValue()))
+                .andExpect(jsonPath("$.profit", nullValue()))
+                .andReturn();
+        String saleId = client.json(result).get("id").asText();
+
+        client.get(cashierAuth, "/api/sales/{id}", saleId)
+                .andExpect(jsonPath("$.costTotal", nullValue()))
+                .andExpect(jsonPath("$.profit", nullValue()));
+        client.get(cashierAuth, "/api/sales/receipt/{n}", client.json(result).get("saleNumber").asText())
+                .andExpect(jsonPath("$.sale.profit", nullValue()));
+    }
+
+    @Test
+    void salesBeyondStockStillCarryTheirCostSoProfitIsComplete() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/settings")
+                .header("Authorization", managerAuth).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"allowNegativeStock\": true}")).andExpect(status().isOk());
+        try {
+            Product p = productWithCost("50.00", "30.00", "0");
+
+            MvcResult result = client.checkout(cashierAuth, body("CARD", null, null, p.getId(), 1))
+                    .andExpect(status().isCreated()).andReturn();
+
+            // 50 net of 5% tax = 50 revenue (tax added on top), cost 30 -> profit 20
+            client.get(managerAuth, "/api/sales/{id}", client.json(result).get("id").asText())
+                    .andExpect(jsonPath("$.profit", equalTo(20.0)));
+        } finally {
+            jdbc.update("update app_settings set value = 'false' where key = 'allow_negative_stock'");
+        }
     }
 
     // ---- preview -------------------------------------------------------------------------

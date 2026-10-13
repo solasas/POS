@@ -425,7 +425,7 @@ describe('billing when out of stock', () => {
     expect(screen.getByText(/Only a manager or administrator can change this/)).toBeInTheDocument()
   })
 
-  it('when on, an out-of-stock product is added and flagged as beyond stock', async () => {
+  it('when on, an out-of-stock product is simply added to the cart with no warning', async () => {
     settingsGet.mockResolvedValue(ON)
     byBarcode.mockResolvedValue(makePosProduct({ id: 'gone', name: 'Last Week Cake', stockQuantity: 0, available: true }))
     catalog.set('gone', makePosProduct({ id: 'gone', name: 'Last Week Cake', price: 10, stockQuantity: 0, available: true }))
@@ -436,7 +436,8 @@ describe('billing when out of stock', () => {
     await scan(user, '222')
 
     expect(await cartItems().findByText('Last Week Cake')).toBeInTheDocument()
-    expect(screen.getByText(/Beyond stock by 1 pc/)).toBeInTheDocument()
+    expect(screen.queryByText(/Beyond stock/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/balance will go negative/i)).not.toBeInTheDocument()
     catalog.delete('gone')
   })
 
@@ -452,7 +453,7 @@ describe('billing when out of stock', () => {
     await user.type(qty, '25{Enter}')   // stock is 10
 
     await waitFor(() => expect(screen.getByLabelText('Quantity of Whole Milk 1L')).toHaveValue('25'))
-    expect(screen.getByText(/Beyond stock by 15 pc/)).toBeInTheDocument()
+    expect(screen.queryByText(/Beyond stock/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Only 10 of Whole Milk 1L available/)).not.toBeInTheDocument()
   })
 })

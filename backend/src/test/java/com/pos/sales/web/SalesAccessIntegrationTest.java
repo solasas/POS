@@ -239,6 +239,24 @@ class SalesAccessIntegrationTest {
     }
 
     @Test
+    void summaryProfitIsOnlyVisibleToManagersAndAdmins() throws Exception {
+        Instant now = Instant.now();
+        String from = now.minus(1, ChronoUnit.HOURS).toString();
+
+        mockMvc.perform(get("/api/sales/summary").header("Authorization", authA).param("from", from))
+                .andExpect(jsonPath("$.costTotal").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.profit").value(org.hamcrest.Matchers.nullValue()));
+
+        // fixture products have a zero cost price, so profit equals net revenue (10.00 + 20.00)
+        mockMvc.perform(get("/api/sales/summary").header("Authorization", managerAuth)
+                        .param("from", from))
+                .andExpect(jsonPath("$.costTotal", org.hamcrest.Matchers.notNullValue()))
+                .andExpect(jsonPath("$.profit", org.hamcrest.Matchers.notNullValue()));
+        mockMvc.perform(get("/api/sales/summary").header("Authorization", adminAuth).param("from", from))
+                .andExpect(jsonPath("$.profit", org.hamcrest.Matchers.notNullValue()));
+    }
+
+    @Test
     void unknownSalesAreNotFound() throws Exception {
         client.get(managerAuth, "/api/sales/{id}", java.util.UUID.randomUUID()).andExpect(status().isNotFound());
         client.get(managerAuth, "/api/sales/receipt/{n}", "S00000000-000000").andExpect(status().isNotFound());

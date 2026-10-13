@@ -255,6 +255,22 @@ The UI is a deliberate design, not a component-library default. Tokens live in
 - **Accessibility:** visible focus rings, labelled controls, `aria-live` scan feedback, keyboard
   shortcut F2, and `prefers-reduced-motion` support.
 
+## Profit
+
+Every sale line stores the product's **cost price at the moment of sale** (`sale_items.unit_cost`),
+next to the selling price it already snapshots. Editing a product's cost later never changes the
+profit of past sales.
+
+- **Profit = net revenue − cost**, where net revenue is the line total minus tax (tax is not
+  income) and cost is `quantity × unit cost`, rounded per line.
+- Managers and admins see **Profit** on the dashboard (today) and **Cost of goods / Profit** on each
+  sale. Cashiers never receive cost or profit from the API (`costTotal`/`profit` are `null`).
+- Sales made while billing beyond stock are included, since their cost is snapshotted like any other.
+- Products whose cost price is left at `0` will show profit equal to full revenue. Set cost prices
+  (Products → Edit) for the figures to mean anything.
+- Sales created before this was added (migration V21) were back-filled with the product's cost price
+  *at that time of migration*, which is the best figure available.
+
 ## Pricing and tax
 
 All money is `BigDecimal` with scale 2 and **HALF_UP** rounding, done in one place
@@ -325,6 +341,7 @@ Hibernate is set to `ddl-auto: validate`, so it never changes the schema. Money 
 | V17 | Category/product Milestone 1 columns, case-insensitive category names, `pg_trgm` search index |
 | V18 | Case-insensitive unique SKU index |
 | V19 | Sales model: `sales` / `sale_items` / `payments` with immutable snapshots, sale-number sequence, idempotency key, append-only `inventory_transactions` ledger, immutability triggers |
+| V21 | `sale_items.unit_cost`: cost price snapshot per sale line, back-filled for existing sales |
 | V20 | `app_settings` table (the out-of-stock billing switch, default off); drops the non-negative stock constraints |
 
 Never edit an applied migration; add a new `V<n>__*.sql`. V17 enables the `pg_trgm`
@@ -345,8 +362,8 @@ Results of the last full run (Milestone 2 sign-off):
 
 | Suite | Result |
 |---|---|
-| Backend `./mvnw test` | **117 passed**, 0 failed |
-| Frontend `npm test` | **79 passed**, 0 failed (10 files) |
+| Backend `./mvnw test` | **134 passed**, 0 failed |
+| Frontend `npm test` | **82 passed**, 0 failed (11 files) |
 | Frontend `tsc --noEmit`, `oxlint`, `vite build` | clean |
 
 What the backend suite covers beyond Milestone 1: pricing/rounding (9 unit tests), checkout rules

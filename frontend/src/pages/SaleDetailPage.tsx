@@ -107,6 +107,20 @@ export default function SaleDetailPage() {
                 <Line label={sale.data.pricesIncludeTax ? 'Tax (included)' : 'Tax'} value={formatMoney(sale.data.taxTotal)} />
                 <Line label="Total" value={formatMoney(sale.data.grandTotal)} strong />
               </dl>
+              {sale.data.profit !== null && sale.data.costTotal !== null && (
+                <dl className="mt-5 space-y-2 rounded-lg bg-slate-100 px-4 py-3" aria-label="Profit">
+                  <Line label="Cost of goods" value={formatMoney(sale.data.costTotal)} />
+                  <div className="flex justify-between text-sm font-semibold">
+                    <dt className="text-slate-700">Profit</dt>
+                    <dd className={`num ${sale.data.profit < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
+                      {formatMoney(sale.data.profit)}
+                    </dd>
+                  </div>
+                  <p className="text-[11px] leading-snug text-slate-500">
+                    Sales excluding tax, less the cost price recorded when this was sold.
+                  </p>
+                </dl>
+              )}
             </section>
 
             {sale.data.payment && (

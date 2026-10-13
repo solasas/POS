@@ -231,6 +231,7 @@ public class CheckoutService {
                     .unit(product.getUnit())
                     .quantity(line.quantity())
                     .unitPrice(line.unitPrice())
+                    .unitCost(product.getCostPrice())
                     .lineSubtotal(line.lineSubtotal())
                     .discountAmount(line.discountAmount())
                     .taxRate(line.taxRatePercent())

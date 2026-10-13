@@ -188,6 +188,9 @@ export interface Sale {
   grandTotal: number
   pricesIncludeTax: boolean
   payment: SalePayment | null
+  /** Only present for managers and admins viewing a sale. */
+  costTotal: number | null
+  profit: number | null
 }
 
 export interface SaleSummary {
@@ -243,6 +246,9 @@ export interface SalesSummary {
   saleCount: number
   grandTotal: number
   byPaymentMethod: { method: PaymentMethod; saleCount: number; grandTotal: number }[]
+  /** Only present for managers and admins. */
+  costTotal: number | null
+  profit: number | null
 }
 
 export interface StoreSettings {
