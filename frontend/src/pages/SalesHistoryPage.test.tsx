@@ -52,8 +52,8 @@ describe('SalesHistoryPage', () => {
 
     const table = within(await screen.findByRole('table'))
     expect(table.getByText('S20261013-000001')).toBeInTheDocument()
-    expect(table.getByText('$12.34')).toBeInTheDocument()
-    expect(table.getByText('$99.50')).toBeInTheDocument()
+    expect(table.getByText('₹12.34')).toBeInTheDocument()
+    expect(table.getByText('₹99.50')).toBeInTheDocument()
     expect(table.getAllByText('Cara Cashier').length).toBeGreaterThan(0)
     expect(table.getByText('UPI')).toBeInTheDocument()
     expect(table.getByText('CASH')).toBeInTheDocument()

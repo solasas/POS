@@ -1,11 +1,18 @@
 import type { Role, UnitOfMeasure } from '../types/api'
 
-const currency = import.meta.env.VITE_CURRENCY || 'USD'
-const moneyFormat = new Intl.NumberFormat(undefined, { style: 'currency', currency })
-const quantityFormat = new Intl.NumberFormat(undefined, { maximumFractionDigits: 3 })
+/** Indian rupees with lakh/crore digit grouping (e.g. ₹1,23,456.00) unless overridden at build time. */
+const CURRENCY = import.meta.env.VITE_CURRENCY || 'INR'
+export const LOCALE = import.meta.env.VITE_LOCALE || 'en-IN'
+
+const moneyFormat = new Intl.NumberFormat(LOCALE, { style: 'currency', currency: CURRENCY })
+const quantityFormat = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 3 })
+const dateTimeFormat = new Intl.DateTimeFormat(LOCALE, { dateStyle: 'medium', timeStyle: 'short' })
+const longDateTimeFormat = new Intl.DateTimeFormat(LOCALE, { dateStyle: 'full', timeStyle: 'medium' })
 
 export const formatMoney = (value: number) => moneyFormat.format(value)
 export const formatQuantity = (value: number) => quantityFormat.format(value)
+export const formatDateTime = (value: string | Date) => dateTimeFormat.format(new Date(value))
+export const formatDateTimeLong = (value: string | Date) => longDateTimeFormat.format(new Date(value))
 
 export const UNIT_LABELS: Record<UnitOfMeasure, string> = {
   PIECE: 'Piece',

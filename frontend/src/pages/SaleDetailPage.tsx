@@ -3,9 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { Alert, Badge, Spinner } from '../components/ui/feedback'
 import { errorMessage } from '../services/errors'
 import { salesService } from '../services/salesService'
-import { formatMoney, formatQuantity, UNIT_SHORT } from '../utils/format'
+import { formatMoney, formatQuantity, UNIT_SHORT, formatDateTimeLong } from '../utils/format'
 
-const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: 'full', timeStyle: 'medium' })
 
 export default function SaleDetailPage() {
   const { id = '' } = useParams<{ id: string }>()
@@ -25,7 +24,7 @@ export default function SaleDetailPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h1 className="font-mono text-2xl font-semibold text-slate-900">{sale.data.saleNumber}</h1>
-              <p className="text-sm text-slate-500">{dateTime.format(new Date(sale.data.soldAt))}</p>
+              <p className="text-sm text-slate-500">{formatDateTimeLong(sale.data.soldAt)}</p>
               <p className="text-sm text-slate-500">Cashier: {sale.data.cashierName}</p>
             </div>
             <div className="flex items-center gap-3">

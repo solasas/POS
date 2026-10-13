@@ -1,5 +1,5 @@
 import type { Receipt } from '../../types/api'
-import { formatMoney, formatQuantity, UNIT_SHORT } from '../../utils/format'
+import { formatMoney, formatQuantity, UNIT_SHORT, formatDateTime } from '../../utils/format'
 
 export type ReceiptWidth = 58 | 80
 
@@ -17,7 +17,6 @@ function Row({ left, right, bold = false }: { left: string; right: string; bold?
   )
 }
 
-const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
 /**
  * Thermal-paper receipt. Rendered only from the stored sale (never from live product data), so a
@@ -44,7 +43,7 @@ export function ReceiptView({ receipt, width }: ReceiptViewProps) {
       <hr className="receipt-rule" />
       <div>
         <Row left="Receipt" right={sale.saleNumber} bold />
-        <Row left="Date" right={dateTime.format(new Date(sale.soldAt))} />
+        <Row left="Date" right={formatDateTime(sale.soldAt)} />
         <Row left="Cashier" right={sale.cashierName} />
         {sale.status === 'VOIDED' && <p className="receipt-center font-bold">*** VOIDED ***</p>}
       </div>

@@ -62,7 +62,7 @@ describe('ProductListPage', () => {
 
     const table = within(await screen.findByRole('table'))
     expect(table.getByText('Whole Milk 1L')).toBeInTheDocument()
-    expect(table.getByText('$1.09')).toBeInTheDocument()
+    expect(table.getByText('₹1.09')).toBeInTheDocument()
     expect(table.getByText('20 L')).toBeInTheDocument()
     expect(table.getAllByText('Active')).toHaveLength(1)
     expect(table.getByText('Inactive')).toBeInTheDocument()

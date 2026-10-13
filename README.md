@@ -69,7 +69,8 @@ If port 8080 is taken, point the dev server elsewhere: `VITE_PROXY_TARGET=http:/
 | `STORE_NAME`, `STORE_ADDRESS`, `STORE_PHONE`, `STORE_TAX_ID`, `STORE_RECEIPT_FOOTER` | backend | name/footer have defaults | Printed on receipts |
 | `VITE_API_URL` | frontend build | `/api` | API base URL baked into the bundle |
 | `VITE_PROXY_TARGET` | frontend dev server | `http://localhost:8080` | Where `npm run dev` proxies `/api` |
-| `VITE_CURRENCY` | frontend build | `USD` | ISO currency code used to format prices |
+| `VITE_CURRENCY` | frontend build | `INR` | ISO currency code used to format prices (default: Indian rupees, ₹) |
+| `VITE_LOCALE` | frontend build | `en-IN` | Locale for number and date formatting (lakh/crore digit grouping, e.g. ₹1,23,456.00) |
 
 Secrets live in `.env` (git-ignored). Nothing in the repository contains a usable credential.
 
@@ -299,7 +300,7 @@ Results of the last full run (Milestone 2 sign-off):
 | Suite | Result |
 |---|---|
 | Backend `./mvnw test` | **116 passed**, 0 failed |
-| Frontend `npm test` | **68 passed**, 0 failed (9 files) |
+| Frontend `npm test` | **72 passed**, 0 failed (10 files) |
 | Frontend `tsc --noEmit`, `oxlint`, `vite build` | clean |
 
 What the backend suite covers beyond Milestone 1: pricing/rounding (9 unit tests), checkout rules

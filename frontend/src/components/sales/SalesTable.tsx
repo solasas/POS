@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom'
 import { Badge } from '../ui/feedback'
 import type { SaleSummary } from '../../types/api'
-import { formatMoney } from '../../utils/format'
+import { formatMoney, formatDateTime } from '../../utils/format'
 
-const dateTime = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
 export function SalesTable({ sales }: { sales: SaleSummary[] }) {
   return (
@@ -27,7 +26,7 @@ export function SalesTable({ sales }: { sales: SaleSummary[] }) {
           {sales.map((sale) => (
             <tr key={sale.id}>
               <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-900">{sale.saleNumber}</td>
-              <td className="px-4 py-3 whitespace-nowrap">{dateTime.format(new Date(sale.soldAt))}</td>
+              <td className="px-4 py-3 whitespace-nowrap">{formatDateTime(sale.soldAt)}</td>
               <td className="hidden px-4 py-3 md:table-cell">{sale.cashierName}</td>
               <td className="px-4 py-3 text-right tabular-nums">{sale.itemCount}</td>
               <td className="px-4 py-3 text-right font-medium tabular-nums">{formatMoney(sale.grandTotal)}</td>

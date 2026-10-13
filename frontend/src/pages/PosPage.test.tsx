@@ -152,7 +152,7 @@ describe('POS barcode entry', () => {
 
     await user.type(screen.getByLabelText('Scan barcode or search products'), 'sour')
     const results = await screen.findByRole('list', { name: 'Matching products' })
-    expect(within(results).getByText('$3.50')).toBeInTheDocument()
+    expect(within(results).getByText('₹3.50')).toBeInTheDocument()
     await user.click(within(results).getByRole('button', { name: /Sourdough Loaf/ }))
 
     expect(await cartItems().findByText('Sourdough Loaf')).toBeInTheDocument()
@@ -177,12 +177,12 @@ describe('POS cart', () => {
     // milk 1.50 + bread 3.50 = 5.00 ; 10% tax = 0.50 ; total 5.50
     const totals = await screen.findByRole('group', { name: 'Order totals' }).catch(() => null)
     expect(totals ?? true).toBeTruthy()
-    await waitFor(() => expect(screen.getByText('$5.50')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('₹5.50')).toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: 'Increase quantity of Whole Milk 1L' }))
 
     // milk 2 x 1.50 = 3.00 + 3.50 = 6.50 ; tax 0.65 ; total 7.15
-    await waitFor(() => expect(screen.getByText('$7.15')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('₹7.15')).toBeInTheDocument())
     expect(preview).toHaveBeenLastCalledWith(
       expect.arrayContaining([{ productId: 'pos-1', quantity: 2 }]),
       0,
@@ -258,12 +258,12 @@ describe('POS checkout', () => {
     expect(complete).toBeDisabled()
 
     await user.type(within(dialog).getByLabelText('Amount tendered'), '1.00')
-    expect(within(dialog).getByRole('alert')).toHaveTextContent('$0.65 short')
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('₹0.65 short')
     expect(complete).toBeDisabled()
 
     await user.clear(within(dialog).getByLabelText('Amount tendered'))
     await user.type(within(dialog).getByLabelText('Amount tendered'), '2.00')
-    expect(within(dialog).getByText('Change due: $0.35')).toBeInTheDocument()
+    expect(within(dialog).getByText('Change due: ₹0.35')).toBeInTheDocument()
     expect(complete).toBeEnabled()
   })
 
