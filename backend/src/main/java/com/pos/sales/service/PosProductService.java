@@ -13,6 +13,7 @@ import com.pos.catalog.repository.ProductRepository;
 import com.pos.catalog.repository.ProductSpecifications;
 import com.pos.sales.dto.PosProductResponse;
 import com.pos.sales.exception.SaleException;
+import com.pos.settings.service.AppSettingsService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -24,6 +25,7 @@ public class PosProductService {
     private static final int SEARCH_LIMIT = 20;
 
     private final ProductRepository productRepository;
+    private final AppSettingsService settingsService;
 
     /** Free-text search over active products by name, SKU or barcode. */
     @Transactional(readOnly = true)
@@ -35,7 +37,10 @@ public class PosProductService {
                 ProductSpecifications.matchesSearch(query),
                 ProductSpecifications.hasActive(true));
         var pageable = PageRequest.of(0, SEARCH_LIMIT, Sort.by("name").ascending().and(Sort.by("id")));
-        return productRepository.findAll(spec, pageable).stream().map(PosProductResponse::from).toList();
+        boolean allow = settingsService.isNegativeStockAllowed();
+        return productRepository.findAll(spec, pageable).stream()
+                .map(product -> PosProductResponse.from(product, allow))
+                .toList();
     }
 
     /**
@@ -45,6 +50,7 @@ public class PosProductService {
     @Transactional(readOnly = true)
     public PosProductResponse byBarcode(String code) {
         String trimmed = code.trim();
+        boolean allow = settingsService.isNegativeStockAllowed();
         List<Product> matches = productRepository.findByBarcodeOrSku(trimmed);
         if (matches.isEmpty()) {
             matches = productRepository.findByBarcodeOrSku(trimmed.toUpperCase());
@@ -53,7 +59,7 @@ public class PosProductService {
         return matches.stream()
                 .sorted((a, b) -> Boolean.compare(trimmed.equals(b.getBarcode()), trimmed.equals(a.getBarcode())))
                 .findFirst()
-                .map(PosProductResponse::from)
+                .map(product -> PosProductResponse.from(product, allow))
                 .orElseThrow(() -> new SaleException(org.springframework.http.HttpStatus.NOT_FOUND,
                         "UNKNOWN_BARCODE", "No product matches '" + trimmed + "'", null));
     }

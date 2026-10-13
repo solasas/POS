@@ -375,15 +375,6 @@ class CheckoutIntegrationTest {
                 .hasMessageContaining("append-only");
     }
 
-    @Test
-    void theDatabaseRefusesNegativeStockEvenIfTheApplicationWould() {
-        Product p = fixtures.product("5.00", "1");
-
-        assertThatThrownBy(() -> jdbc.update(
-                "update products set stock_quantity = -1 where id = ?", p.getId()))
-                .hasMessageContaining("stock");
-    }
-
     // ---- preview -------------------------------------------------------------------------
 
     @Test

@@ -244,3 +244,9 @@ export interface SalesSummary {
   grandTotal: number
   byPaymentMethod: { method: PaymentMethod; saleCount: number; grandTotal: number }[]
 }
+
+export interface StoreSettings {
+  allowNegativeStock: boolean
+  updatedAt: string | null
+  updatedBy: string | null
+}

@@ -120,6 +120,8 @@ Interactive docs: `/swagger-ui.html`. List endpoints return
 | GET | `/api/sales` | MANAGER | All sales (paged; `saleNumber`, `from`, `to`, `cashierId`, `paymentMethod`, `status`) |
 | GET | `/api/sales/{id}` | CASHIER* | Sale detail |
 | GET | `/api/sales/receipt/{saleNumber}` | CASHIER* | Receipt data (store details + stored sale) |
+| GET | `/api/settings` | CASHIER | Store settings (currently `allowNegativeStock`) |
+| PUT | `/api/settings` | MANAGER | Change store settings; audited |
 | POST | `/api/inventory/adjustments` | MANAGER | Receive or correct stock; reason required |
 | GET | `/api/inventory/transactions` | MANAGER | Inventory ledger, newest first (`productId`, `saleId`) |
 | GET | `/api/health` | public | Liveness |
@@ -158,8 +160,32 @@ category. `lowStock` is true when `stockQuantity <= lowStockThreshold`.
 > UPI and card payments are **recorded as confirmed by the cashier**. Nothing is verified with a
 > bank or payment provider, and no card numbers, CVVs, UPI PINs or credentials are collected or stored.
 
-Stock must exist before it can be sold. Managers add it from **Products → Stock**, which writes a
-signed `ADJUSTMENT` entry (reason required) to the ledger.
+Stock must exist before it can be sold, unless the store has switched on **Bill even when out of
+stock** (below). Managers add stock from **Products → Stock**, which writes a signed `ADJUSTMENT`
+entry (reason required) to the ledger.
+
+### Billing when a product is out of stock
+
+Busy tills often cannot stop to key in deliveries. A store-wide switch at the top of the POS screen,
+**Bill even when out of stock**, lets billing continue after a product's stock reaches zero.
+
+| | Switch OFF (default) | Switch ON |
+|---|---|---|
+| Checkout beyond stock | Rejected (`409 INSUFFICIENT_STOCK`) | Allowed; stock goes **negative** |
+| Out-of-stock product at the till | Cannot be added | Added, flagged "Beyond stock by N" |
+| Inactive product, unknown product, fractional piece quantities, payment checks | Rejected | **Still rejected** |
+| Ledger | `SALE` entry per line | Same; `stock_after` may be below zero |
+| Manual adjustment below zero | Rejected | Allowed |
+
+- Only **MANAGER and ADMIN** can flip the switch (`PUT /api/settings`); cashiers see its state.
+  Changes are written to the audit log and application log (`settings.changed`).
+- Row locking and idempotency are unchanged, so parallel bills still produce an exact balance.
+- Receiving stock later (a positive adjustment) brings the balance back up; the ledger keeps the
+  full history through zero. Products with a negative balance show as **Oversold** in the catalog
+  and dashboard so they are easy to reconcile.
+- Turning the switch off does not repair existing negative balances; it only stops new ones.
+- The database no longer carries a `stock_quantity >= 0` constraint (migration V20). With the
+  switch off, the application enforces it under the product row lock.
 
 ## How checkout works
 
@@ -299,6 +325,7 @@ Hibernate is set to `ddl-auto: validate`, so it never changes the schema. Money 
 | V17 | Category/product Milestone 1 columns, case-insensitive category names, `pg_trgm` search index |
 | V18 | Case-insensitive unique SKU index |
 | V19 | Sales model: `sales` / `sale_items` / `payments` with immutable snapshots, sale-number sequence, idempotency key, append-only `inventory_transactions` ledger, immutability triggers |
+| V20 | `app_settings` table (the out-of-stock billing switch, default off); drops the non-negative stock constraints |
 
 Never edit an applied migration; add a new `V<n>__*.sql`. V17 enables the `pg_trgm`
 extension, which requires a role allowed to `CREATE EXTENSION` (the Compose database user is).
@@ -319,7 +346,7 @@ Results of the last full run (Milestone 2 sign-off):
 | Suite | Result |
 |---|---|
 | Backend `./mvnw test` | **117 passed**, 0 failed |
-| Frontend `npm test` | **72 passed**, 0 failed (10 files) |
+| Frontend `npm test` | **79 passed**, 0 failed (10 files) |
 | Frontend `tsc --noEmit`, `oxlint`, `vite build` | clean |
 
 What the backend suite covers beyond Milestone 1: pricing/rounding (9 unit tests), checkout rules
@@ -371,7 +398,7 @@ Axios 1.20 · React Hook Form 7.90 · Zod 3.25 · Zustand 5 · Vitest 5 · Testi
 - **No voids, refunds or returns.** The `VOIDED` status exists in the model but nothing sets it. Doing this correctly needs compensating stock entries and approvals (Milestone 3).
 - Payments are cashier-recorded only: no gateway, no reconciliation, no split tenders (one payment per sale) and no partial payments.
 - Discounts are order-level percentages. There are no per-item discounts, promotions or coupons, and no customer attached to a sale.
-- Stock is a single quantity per product. Batches/expiry (the legacy `inventory` table), purchasing and stock-takes are not implemented; the only inventory writes are sales and manager adjustments.
+- Stock is a single quantity per product and can be negative when billing beyond stock is enabled. Batches/expiry (the legacy `inventory` table), purchasing and stock-takes are not implemented; the only inventory writes are sales and manager adjustments.
 - Tax is configuration-driven with no legal validation (see [Pricing and tax](#pricing-and-tax)); one rate per tax class and no tax-class editor in the UI.
 - Sale numbers use a database sequence and the UTC date, so numbers can have gaps and a late-evening sale in a UTC+ time zone may carry the previous day's date.
 - Receipts print through the browser. Direct thermal-printer/ESC-POS integration, cash-drawer kick and barcode label printing are out of scope; printing was not tested on physical hardware.

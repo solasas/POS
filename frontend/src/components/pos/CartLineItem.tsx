@@ -13,9 +13,19 @@ interface CartLineItemProps {
   error?: string
   /** Briefly highlights a line that was just added or incremented. */
   flash?: boolean
+  /** When billing beyond stock is allowed, a line above the stock on hand is flagged, not blocked. */
+  allowBeyondStock?: boolean
 }
 
-export function CartLineItem({ line, priced, onQuantityChange, onRemove, error, flash }: CartLineItemProps) {
+export function CartLineItem({
+  line,
+  priced,
+  onQuantityChange,
+  onRemove,
+  error,
+  flash,
+  allowBeyondStock = false,
+}: CartLineItemProps) {
   const { product, quantity } = line
   // text being typed; null means "show the committed quantity"
   const [draft, setDraft] = useState<string | null>(null)
@@ -29,6 +39,8 @@ export function CartLineItem({ line, priced, onQuantityChange, onRemove, error, 
   }
 
   const step = 1
+  const beyondStock = allowBeyondStock && quantity > product.stockQuantity
+  const shortBy = Math.round((quantity - Math.max(product.stockQuantity, 0)) * 1000) / 1000
   const stepper =
     'flex h-8 w-8 items-center justify-center text-slate-600 transition hover:bg-slate-200/70 hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent'
 
@@ -98,6 +110,12 @@ export function CartLineItem({ line, priced, onQuantityChange, onRemove, error, 
           Remove
         </button>
       </div>
+      {beyondStock && (
+        <p className="mt-2 flex items-center gap-1.5 rounded-md bg-amber-100 px-2.5 py-1.5 text-xs font-medium text-amber-900">
+          <Icon name="alert" size={14} className="shrink-0" />
+          Beyond stock by {shortBy} {UNIT_SHORT[product.unit]}. The balance will go negative.
+        </p>
+      )}
       {error && (
         <p role="alert" className="mt-2 text-xs font-medium text-red-600">
           {error}

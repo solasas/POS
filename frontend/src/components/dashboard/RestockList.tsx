@@ -49,7 +49,11 @@ export function RestockList({ products, totalLow, loading }: RestockListProps) {
                   {product.name}
                 </Link>
                 <span className={`num shrink-0 text-xs font-semibold ${out ? 'text-red-600' : 'text-amber-700'}`}>
-                  {out ? 'Out of stock' : `${formatQuantity(product.stockQuantity)} ${UNIT_SHORT[product.unit]} left`}
+                  {product.stockQuantity < 0
+                    ? `Oversold by ${formatQuantity(-product.stockQuantity)} ${UNIT_SHORT[product.unit]}`
+                    : out
+                      ? 'Out of stock'
+                      : `${formatQuantity(product.stockQuantity)} ${UNIT_SHORT[product.unit]} left`}
                 </span>
               </div>
               <div

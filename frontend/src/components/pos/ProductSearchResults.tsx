@@ -5,13 +5,16 @@ import { Icon } from '../ui/Icon'
 interface ProductSearchResultsProps {
   products: PosProduct[]
   onSelect: (product: PosProduct) => void
+  /** Billing continues past zero stock, so "out of stock" is a warning rather than a block. */
+  allowBeyondStock?: boolean
 }
 
-export function ProductSearchResults({ products, onSelect }: ProductSearchResultsProps) {
+export function ProductSearchResults({ products, onSelect, allowBeyondStock = false }: ProductSearchResultsProps) {
   return (
     <ul aria-label="Matching products" className="card divide-y divide-slate-100 overflow-hidden">
       {products.map((product) => {
-        const low = product.available && product.stockQuantity <= 5
+        const low = product.available && product.stockQuantity > 0 && product.stockQuantity <= 5
+        const beyond = allowBeyondStock && product.available && product.stockQuantity <= 0
         return (
           <li key={product.id}>
             <button
@@ -28,7 +31,11 @@ export function ProductSearchResults({ products, onSelect }: ProductSearchResult
                 </span>
               </span>
               <span className="shrink-0 text-right">
-                {product.available ? (
+                {beyond ? (
+                  <span className="block text-xs font-semibold text-amber-700">
+                    No stock · billing allowed
+                  </span>
+                ) : product.available ? (
                   <span className={`block text-xs ${low ? 'font-semibold text-amber-700' : 'text-slate-500'}`}>
                     {formatQuantity(product.stockQuantity)} {UNIT_SHORT[product.unit]} in stock
                   </span>

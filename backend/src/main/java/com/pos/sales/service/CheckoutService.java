@@ -44,6 +44,7 @@ import com.pos.sales.entity.SaleItem;
 import com.pos.sales.entity.SaleStatus;
 import com.pos.sales.exception.SaleException;
 import com.pos.sales.repository.SaleRepository;
+import com.pos.settings.service.AppSettingsService;
 
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -78,6 +79,7 @@ public class CheckoutService {
     private final RegisterRepository registerRepository;
     private final PricingService pricingService;
     private final PricingProperties pricingProperties;
+    private final AppSettingsService settingsService;
     private final EntityManager entityManager;
     private final Clock clock;
 
@@ -139,6 +141,9 @@ public class CheckoutService {
                             + "% discount");
         }
 
+        // read inside the transaction so one checkout sees one consistent value of the switch
+        boolean allowNegativeStock = settingsService.isNegativeStockAllowed();
+
         // ---- lock and load authoritative products (ascending id) --------------------------
         List<UUID> ids = request.items().stream().map(CheckoutItem::productId).sorted().toList();
         Map<UUID, Product> products = productRepository.findAllByIdForUpdate(ids).stream()
@@ -161,7 +166,7 @@ public class CheckoutService {
                         "'" + product.getName() + "' is sold by the " + product.getUnit().name().toLowerCase()
                                 + " and needs a whole-number quantity", product.getId());
             }
-            if (product.getStockQuantity().compareTo(item.quantity()) < 0) {
+            if (!allowNegativeStock && product.getStockQuantity().compareTo(item.quantity()) < 0) {
                 throw SaleException.insufficientStock(product.getName(), product.getId(),
                         plain(item.quantity()), plain(product.getStockQuantity()));
             }
@@ -250,6 +255,10 @@ public class CheckoutService {
             BigDecimal before = product.getStockQuantity();
             BigDecimal after = before.subtract(quantity);
             product.setStockQuantity(after);
+            if (after.signum() < 0) {
+                log.warn("checkout.sold_beyond_stock key={} product={} before={} after={} cashier={}",
+                        key, product.getId(), before, after, actor.id());
+            }
 
             inventoryTransactionRepository.save(InventoryTransaction.builder()
                     .product(product)

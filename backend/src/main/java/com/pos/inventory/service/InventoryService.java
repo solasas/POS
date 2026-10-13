@@ -20,6 +20,7 @@ import com.pos.inventory.entity.InventoryTransaction;
 import com.pos.inventory.entity.MovementType;
 import com.pos.inventory.exception.InventoryException;
 import com.pos.inventory.repository.InventoryTransactionRepository;
+import com.pos.settings.service.AppSettingsService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -36,6 +37,7 @@ public class InventoryService {
 
     private final ProductRepository productRepository;
     private final InventoryTransactionRepository ledger;
+    private final AppSettingsService settingsService;
 
     @Transactional
     public InventoryTransactionResponse adjust(AuthenticatedUser actor, AdjustmentRequest request) {
@@ -54,7 +56,7 @@ public class InventoryService {
 
         BigDecimal before = product.getStockQuantity();
         BigDecimal after = before.add(change);
-        if (after.signum() < 0) {
+        if (after.signum() < 0 && !settingsService.isNegativeStockAllowed()) {
             throw InventoryException.wouldGoNegative(product.getName(),
                     before.stripTrailingZeros().toPlainString(), change.stripTrailingZeros().toPlainString());
         }

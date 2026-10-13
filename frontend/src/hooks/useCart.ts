@@ -37,7 +37,7 @@ export type CartResult = { ok: true; quantity: number } | { ok: false; reason: s
  * Temporary, client-only basket. Adding or removing items never touches stock; stock is only
  * deducted when the server completes a checkout.
  */
-export function useCart() {
+export function useCart({ allowBeyondStock = false }: { allowBeyondStock?: boolean } = {}) {
   const [lines, dispatch] = useReducer(reducer, [])
 
   /** Adds {@code amount} (default 1) of a product, increasing the quantity of an existing line. */
@@ -51,23 +51,26 @@ export function useCart() {
       }
       const current = lines.find((line) => line.product.id === product.id)?.quantity ?? 0
       const wanted = roundQuantity(current + amount)
-      const check = checkQuantity(product, wanted)
+      const check = checkQuantity(product, wanted, allowBeyondStock)
       if (!check.ok) {
         return check
       }
       dispatch({ type: 'set', product, quantity: check.quantity })
       return check
     },
-    [lines],
+    [lines, allowBeyondStock],
   )
 
-  const setQuantity = useCallback((product: PosProduct, quantity: number): CartResult => {
-    const check = checkQuantity(product, quantity)
-    if (check.ok) {
-      dispatch({ type: 'set', product, quantity: check.quantity })
-    }
-    return check
-  }, [])
+  const setQuantity = useCallback(
+    (product: PosProduct, quantity: number): CartResult => {
+      const check = checkQuantity(product, quantity, allowBeyondStock)
+      if (check.ok) {
+        dispatch({ type: 'set', product, quantity: check.quantity })
+      }
+      return check
+    },
+    [allowBeyondStock],
+  )
 
   const remove = useCallback((productId: string) => dispatch({ type: 'remove', productId }), [])
   const clear = useCallback(() => dispatch({ type: 'clear' }), [])

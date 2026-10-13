@@ -4,12 +4,17 @@ import { vi } from 'vitest'
 import { ApiError } from '../services/errors'
 import { posService } from '../services/posService'
 import { salesService } from '../services/salesService'
+import { settingsService } from '../services/settingsService'
+import { useAuthStore } from '../store/authStore'
 import { makePosProduct, makeSale, renderWithProviders } from '../test/render'
 import type { CartRequestItem, PosProduct, PricePreview } from '../types/api'
 import PosPage from './PosPage'
 
 vi.mock('../services/posService', () => ({
   posService: { search: vi.fn(), byBarcode: vi.fn(), preview: vi.fn() },
+}))
+vi.mock('../services/settingsService', () => ({
+  settingsService: { get: vi.fn(), setAllowNegativeStock: vi.fn() },
 }))
 vi.mock('../services/salesService', () => ({
   salesService: { checkout: vi.fn(), list: vi.fn(), get: vi.fn(), receipt: vi.fn() },
@@ -56,7 +61,14 @@ function fakePreview(items: CartRequestItem[]): PricePreview {
   }
 }
 
+const settingsGet = vi.mocked(settingsService.get)
+const settingsSet = vi.mocked(settingsService.setAllowNegativeStock)
+const OFF = { allowNegativeStock: false, updatedAt: null, updatedBy: null }
+const ON = { allowNegativeStock: true, updatedAt: '2026-10-13T10:00:00Z', updatedBy: 'u1' }
+
 beforeEach(() => {
+  useAuthStore.setState({ token: 't', user: { id: 'u', name: 'Test', role: 'MANAGER' } })
+  settingsGet.mockResolvedValue(OFF)
   search.mockResolvedValue([])
   preview.mockImplementation(async (items) => fakePreview(items))
   byBarcode.mockImplementation(async (code) => {
@@ -371,5 +383,76 @@ describe('POS checkout', () => {
 
     await waitFor(() => expect(checkout).toHaveBeenCalledTimes(2))
     expect(checkout.mock.calls[1][1]).not.toBe(checkout.mock.calls[0][1])
+  })
+})
+
+describe('billing when out of stock', () => {
+  const sold_out = makePosProduct({ id: 'gone', name: 'Last Week Cake', stockQuantity: 0, available: false })
+
+  it('is off by default: an out-of-stock product cannot be added', async () => {
+    byBarcode.mockResolvedValueOnce(sold_out)
+    const user = userEvent.setup()
+    renderWithProviders(<PosPage />)
+    expect(await screen.findByRole('switch', { name: 'Bill even when out of stock' })).toHaveAttribute('aria-checked', 'false')
+
+    await scan(user, '222')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Last Week Cake is out of stock')
+  })
+
+  it('lets a manager switch it on and tells them what that means', async () => {
+    settingsSet.mockResolvedValue(ON)
+    const user = userEvent.setup()
+    renderWithProviders(<PosPage />)
+    const toggle = await screen.findByRole('switch', { name: 'Bill even when out of stock' })
+
+    await user.click(toggle)
+
+    await waitFor(() => expect(settingsSet).toHaveBeenCalledWith(true))
+    await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'))
+    expect(screen.getByText(/Stock can go below zero/)).toBeInTheDocument()
+  })
+
+  it('shows cashiers the state but does not let them change it', async () => {
+    useAuthStore.setState({ token: 't', user: { id: 'u', name: 'Test', role: 'CASHIER' } })
+    settingsGet.mockResolvedValue(ON)
+    renderWithProviders(<PosPage />)
+
+    const toggle = await screen.findByRole('switch', { name: 'Bill even when out of stock' })
+    await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'))
+
+    expect(toggle).toBeDisabled()
+    expect(screen.getByText(/Only a manager or administrator can change this/)).toBeInTheDocument()
+  })
+
+  it('when on, an out-of-stock product is added and flagged as beyond stock', async () => {
+    settingsGet.mockResolvedValue(ON)
+    byBarcode.mockResolvedValue(makePosProduct({ id: 'gone', name: 'Last Week Cake', stockQuantity: 0, available: true }))
+    catalog.set('gone', makePosProduct({ id: 'gone', name: 'Last Week Cake', price: 10, stockQuantity: 0, available: true }))
+    const user = userEvent.setup()
+    renderWithProviders(<PosPage />)
+    await waitFor(() => expect(screen.getByRole('switch', { name: 'Bill even when out of stock' })).toHaveAttribute('aria-checked', 'true'))
+
+    await scan(user, '222')
+
+    expect(await cartItems().findByText('Last Week Cake')).toBeInTheDocument()
+    expect(screen.getByText(/Beyond stock by 1 pc/)).toBeInTheDocument()
+    catalog.delete('gone')
+  })
+
+  it('when on, quantities above the stock on hand are accepted', async () => {
+    settingsGet.mockResolvedValue(ON)
+    const user = userEvent.setup()
+    renderWithProviders(<PosPage />)
+    await waitFor(() => expect(screen.getByRole('switch', { name: 'Bill even when out of stock' })).toHaveAttribute('aria-checked', 'true'))
+    await scan(user, '5000000000011')
+    const qty = await screen.findByLabelText('Quantity of Whole Milk 1L')
+
+    await user.clear(qty)
+    await user.type(qty, '25{Enter}')   // stock is 10
+
+    await waitFor(() => expect(screen.getByLabelText('Quantity of Whole Milk 1L')).toHaveValue('25'))
+    expect(screen.getByText(/Beyond stock by 15 pc/)).toBeInTheDocument()
+    expect(screen.queryByText(/Only 10 of Whole Milk 1L available/)).not.toBeInTheDocument()
   })
 })

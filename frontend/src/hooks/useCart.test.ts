@@ -113,4 +113,35 @@ describe('useCart', () => {
     act(() => result.current.clear())
     expect(result.current.lines).toHaveLength(0)
   })
+
+  it('allows exceeding the stock on hand only when billing beyond stock is enabled', () => {
+    const milk = makePosProduct({ stockQuantity: 2 })
+
+    const strict = renderHook(() => useCart())
+    let blocked: ReturnType<typeof strict.result.current.setQuantity> | undefined
+    act(() => {
+      blocked = strict.result.current.setQuantity(milk, 5)
+    })
+    expect(blocked).toEqual({ ok: false, reason: expect.stringContaining('Only 2') })
+
+    const lenient = renderHook(() => useCart({ allowBeyondStock: true }))
+    act(() => {
+      lenient.result.current.setQuantity(milk, 5)
+    })
+    expect(lenient.result.current.lines[0].quantity).toBe(5)
+  })
+
+  it('still enforces whole numbers and inactive products when beyond-stock billing is on', () => {
+    const { result } = renderHook(() => useCart({ allowBeyondStock: true }))
+    let fractional: ReturnType<typeof result.current.setQuantity> | undefined
+    let inactive: ReturnType<typeof result.current.add> | undefined
+
+    act(() => {
+      fractional = result.current.setQuantity(makePosProduct(), 1.5)
+      inactive = result.current.add(makePosProduct({ id: 'x', active: false, available: false }))
+    })
+
+    expect(fractional).toEqual({ ok: false, reason: expect.stringContaining('whole units') })
+    expect(inactive).toEqual({ ok: false, reason: expect.stringContaining('inactive') })
+  })
 })

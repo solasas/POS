@@ -251,7 +251,9 @@ export default function ProductListPage() {
                       </span>
                       {(product.stockQuantity <= 0 || product.lowStock) && (
                         <div className="mt-1">
-                          {product.stockQuantity <= 0 ? (
+                          {product.stockQuantity < 0 ? (
+                            <Badge tone="red">Oversold</Badge>
+                          ) : product.stockQuantity === 0 ? (
                             <Badge tone="red">Out of stock</Badge>
                           ) : (
                             <Badge tone="amber">Low stock</Badge>

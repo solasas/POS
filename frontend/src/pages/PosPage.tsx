@@ -9,7 +9,11 @@ import { SaleSuccess } from '../components/pos/SaleSuccess'
 import { Button } from '../components/ui/Button'
 import { Alert, EmptyState, TableSkeleton } from '../components/ui/feedback'
 import { Icon } from '../components/ui/Icon'
+import { StockPolicyToggle } from '../components/pos/StockPolicyToggle'
 import { useCart } from '../hooks/useCart'
+import { useStoreSettings } from '../hooks/useStoreSettings'
+import { useAuthStore } from '../store/authStore'
+import { hasRole } from '../utils/format'
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
 import { usePricePreview } from '../hooks/usePricePreview'
 import { posService } from '../services/posService'
@@ -20,7 +24,10 @@ type Feedback = { tone: 'success' | 'error' | 'info'; message: string }
 
 export default function PosPage() {
   const queryClient = useQueryClient()
-  const cart = useCart()
+  const settings = useStoreSettings()
+  const allowBeyondStock = settings.data?.allowNegativeStock ?? false
+  const canChangeSettings = hasRole(useAuthStore((state) => state.user?.role), 'MANAGER')
+  const cart = useCart({ allowBeyondStock })
   const inputRef = useRef<HTMLInputElement>(null)
 
   const [text, setText] = useState('')
@@ -150,6 +157,8 @@ export default function PosPage() {
           <h1 className="font-display text-[1.9rem] leading-tight font-bold text-ink">New sale</h1>
         </div>
 
+        <StockPolicyToggle enabled={allowBeyondStock} canChange={canChangeSettings} />
+
         <BarcodeInput ref={inputRef} value={text} onChange={setText} onSubmit={handleScan} busy={lookingUp} />
 
         <div aria-live="polite" className="min-h-9">
@@ -182,7 +191,7 @@ export default function PosPage() {
           </EmptyState>
         )}
         {showResults && search.data && search.data.length > 0 && (
-          <ProductSearchResults products={search.data} onSelect={addProduct} />
+          <ProductSearchResults products={search.data} onSelect={addProduct} allowBeyondStock={allowBeyondStock} />
         )}
         {!showResults && !completedSale && (
           <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-300 bg-card/50 px-6 py-14 text-center">
@@ -261,6 +270,7 @@ export default function PosPage() {
                     key={lastTouched.id === line.product.id ? `${line.product.id}-${lastTouched.n}` : line.product.id}
                     line={line}
                     flash={lastTouched.id === line.product.id}
+                    allowBeyondStock={allowBeyondStock}
                     priced={preview.data?.lines.find((p) => p.productId === line.product.id)}
                     error={lineErrors[line.product.id]}
                     onQuantityChange={(q) => handleQuantity(line.product, q)}

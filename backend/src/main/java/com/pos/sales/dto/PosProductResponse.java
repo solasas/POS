@@ -20,7 +20,11 @@ public record PosProductResponse(
         boolean active,
         boolean available) {
 
-    public static PosProductResponse from(Product product) {
+    /**
+     * @param allowBeyondStock whether billing continues after stock hits zero; when true an active
+     *                         product is sellable even with no stock on hand
+     */
+    public static PosProductResponse from(Product product, boolean allowBeyondStock) {
         return new PosProductResponse(
                 product.getId(),
                 product.getName(),
@@ -32,6 +36,6 @@ public record PosProductResponse(
                 product.getPrice(),
                 product.getStockQuantity(),
                 product.isActive(),
-                product.isActive() && product.getStockQuantity().signum() > 0);
+                product.isActive() && (allowBeyondStock || product.getStockQuantity().signum() > 0));
     }
 }
